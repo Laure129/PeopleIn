@@ -2,18 +2,18 @@
 
 import argparse
 import logging
-import sqlite3
 import subprocess
 import threading
-import tomllib
 from bisect import bisect_right
 from collections import Counter, defaultdict
-from contextlib import closing
 from datetime import datetime, timedelta
 from fractions import Fraction
 from pathlib import Path
 
 import numpy as np
+
+from config import DATABASE_PATH, PROJECT_DIR, debug_mode
+from database import ensure_unread, mark_read
 
 CAMERAS = ("entrance", "hall1", "hall2", "hall3", "hall4", "hall5", "loby")
 FRAME_WIDTH = 640
@@ -21,61 +21,8 @@ FRAME_HEIGHT = 360
 SOURCE_FPS = 25
 FRAME_STRIDE = 25
 SEGMENT_SECONDS = 305
-PROJECT_DIR = Path(__file__).parent
-CONFIG_PATH = PROJECT_DIR / "config.toml"
-DATABASE_PATH = PROJECT_DIR / "data" / "read_files.sqlite3"
 
 log = logging.getLogger(__name__)
-
-
-def debug_mode(config_path=CONFIG_PATH):
-    """Return the configured debug flag; missing config defaults to false."""
-    path = Path(config_path)
-    config = (
-        tomllib.loads(path.read_text(encoding="utf-8"))
-        if path.is_file()
-        else {}
-    )
-    debug = config.get("debug", False)
-    if not isinstance(debug, bool):
-        raise ValueError("config debug must be true or false")
-    return debug
-
-
-def _database(database_path):
-    path = Path(database_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(path, timeout=30)
-    connection.execute(
-        "CREATE TABLE IF NOT EXISTS read_files ("
-        "path TEXT PRIMARY KEY, "
-        "read_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
-    )
-    connection.commit()
-    return connection
-
-
-def _check_unread(database_path, plan):
-    required = {
-        f"{camera}/{ref['mkv']}"
-        for camera, refs in plan.items()
-        for ref in refs
-    }
-    with closing(_database(database_path)) as connection:
-        already_read = {
-            row[0] for row in connection.execute("SELECT path FROM read_files")
-        }
-    duplicates = sorted(required & already_read)
-    if duplicates:
-        raise RuntimeError("archive files already read: " + ", ".join(duplicates))
-
-
-def _mark_read(database_path, path):
-    with closing(sqlite3.connect(database_path, timeout=30)) as connection:
-        connection.execute(
-            "INSERT OR IGNORE INTO read_files(path) VALUES (?)", (path,),
-        )
-        connection.commit()
 
 
 def _mkv_files(camera_dir):
@@ -262,7 +209,7 @@ def _decode_camera(archive_dir, camera, needed_by_file, store, database_path=Non
                     f"e.g. {min(remaining)}"
                 )
             if database_path is not None:
-                _mark_read(database_path, f"{camera}/{mkv}")
+                mark_read(database_path, f"{camera}/{mkv}")
             log.info("decoded %s/%s: %d frames", camera, mkv, len(needed))
     except Exception as error:
         store.fail(error)
@@ -303,7 +250,14 @@ def start_decoders(
         debug = debug_mode()
     tracked_database = None if debug else Path(database_path)
     if tracked_database is not None:
-        _check_unread(tracked_database, plan)
+        ensure_unread(
+            tracked_database,
+            (
+                f"{camera}/{ref['mkv']}"
+                for camera, refs in plan.items()
+                for ref in refs
+            ),
+        )
 
     threads = []
     store.track_decoders(len(plan))

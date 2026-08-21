@@ -12,7 +12,7 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py archive_stream.py config.toml ./
+COPY app.py archive_stream.py config.py config.toml database.py ./
 
 EXPOSE 8000
 
