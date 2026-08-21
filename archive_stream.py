@@ -2,10 +2,13 @@
 
 import argparse
 import logging
+import sqlite3
 import subprocess
 import threading
+import tomllib
 from bisect import bisect_right
 from collections import Counter, defaultdict
+from contextlib import closing
 from datetime import datetime, timedelta
 from fractions import Fraction
 from pathlib import Path
@@ -18,8 +21,61 @@ FRAME_HEIGHT = 360
 SOURCE_FPS = 25
 FRAME_STRIDE = 25
 SEGMENT_SECONDS = 305
+PROJECT_DIR = Path(__file__).parent
+CONFIG_PATH = PROJECT_DIR / "config.toml"
+DATABASE_PATH = PROJECT_DIR / "data" / "read_files.sqlite3"
 
 log = logging.getLogger(__name__)
+
+
+def debug_mode(config_path=CONFIG_PATH):
+    """Return the configured debug flag; missing config defaults to false."""
+    path = Path(config_path)
+    config = (
+        tomllib.loads(path.read_text(encoding="utf-8"))
+        if path.is_file()
+        else {}
+    )
+    debug = config.get("debug", False)
+    if not isinstance(debug, bool):
+        raise ValueError("config debug must be true or false")
+    return debug
+
+
+def _database(database_path):
+    path = Path(database_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(path, timeout=30)
+    connection.execute(
+        "CREATE TABLE IF NOT EXISTS read_files ("
+        "path TEXT PRIMARY KEY, "
+        "read_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+    )
+    connection.commit()
+    return connection
+
+
+def _check_unread(database_path, plan):
+    required = {
+        f"{camera}/{ref['mkv']}"
+        for camera, refs in plan.items()
+        for ref in refs
+    }
+    with closing(_database(database_path)) as connection:
+        already_read = {
+            row[0] for row in connection.execute("SELECT path FROM read_files")
+        }
+    duplicates = sorted(required & already_read)
+    if duplicates:
+        raise RuntimeError("archive files already read: " + ", ".join(duplicates))
+
+
+def _mark_read(database_path, path):
+    with closing(sqlite3.connect(database_path, timeout=30)) as connection:
+        connection.execute(
+            "INSERT OR IGNORE INTO read_files(path) VALUES (?)", (path,),
+        )
+        connection.commit()
 
 
 def _mkv_files(camera_dir):
@@ -160,7 +216,7 @@ class FrameStore:
         return frame
 
 
-def _decode_camera(archive_dir, camera, needed_by_file, store):
+def _decode_camera(archive_dir, camera, needed_by_file, store, database_path=None):
     frame_bytes = FRAME_WIDTH * FRAME_HEIGHT * 3
     try:
         for mkv in sorted(needed_by_file):
@@ -205,6 +261,8 @@ def _decode_camera(archive_dir, camera, needed_by_file, store):
                     f"{camera}/{mkv}: {len(remaining)} frames beyond EOF, "
                     f"e.g. {min(remaining)}"
                 )
+            if database_path is not None:
+                _mark_read(database_path, f"{camera}/{mkv}")
             log.info("decoded %s/%s: %d frames", camera, mkv, len(needed))
     except Exception as error:
         store.fail(error)
@@ -237,8 +295,16 @@ def _read_exactly(stream, size):
     return b"".join(chunks)
 
 
-def start_decoders(archive_dir, plan, store):
+def start_decoders(
+    archive_dir, plan, store, *, debug=None, database_path=DATABASE_PATH,
+):
     """Start one FFmpeg decoder thread per camera."""
+    if debug is None:
+        debug = debug_mode()
+    tracked_database = None if debug else Path(database_path)
+    if tracked_database is not None:
+        _check_unread(tracked_database, plan)
+
     threads = []
     store.track_decoders(len(plan))
     for camera, refs in plan.items():
@@ -247,7 +313,7 @@ def start_decoders(archive_dir, plan, store):
             needed_by_file[ref["mkv"]].add(ref["frame_index"])
         thread = threading.Thread(
             target=_decode_camera,
-            args=(archive_dir, camera, needed_by_file, store),
+            args=(archive_dir, camera, needed_by_file, store, tracked_database),
             name=f"decode-{camera}",
             daemon=True,
         )
@@ -260,7 +326,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--archive-dir", type=Path,
-        default=Path(__file__).parent / "resources" / "archive_debug_cache",
+        default=PROJECT_DIR / "resources" / "archive_debug_cache",
     )
     parser.add_argument("--start-time", type=datetime.fromisoformat, required=True)
     parser.add_argument("--duration", type=float, default=1.0)
