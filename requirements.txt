@@ -1,0 +1,6 @@
+fastapi
+numpy
+onnxruntime
+opencv-python-headless
+openvino
+uvicorn
