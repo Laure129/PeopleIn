@@ -32,13 +32,6 @@ def frame_interval_ms(config_path=CONFIG_PATH):
     return value
 
 
-def playback_speed(config_path=CONFIG_PATH):
-    value = _settings(config_path).get("playback_speed", 1.0)
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
-        raise ValueError("config playback_speed must be greater than zero")
-    return float(value)
-
-
 def archive_dir(config_path=CONFIG_PATH):
     value = _settings(config_path).get("archive_dir", "archive_debug_cache")
     if (

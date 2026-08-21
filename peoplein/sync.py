@@ -1,21 +1,16 @@
-"""Shared playback clock and camera synchronization checks."""
+"""Shared archive clock and camera synchronization checks."""
 
-import time
 from datetime import timedelta
 
 
 class PlaybackClock:
     """One absolute playback clock shared by every camera."""
 
-    def __init__(self, start_time, frame_interval_ms, speed):
+    def __init__(self, start_time, frame_interval_ms):
         if frame_interval_ms <= 0:
             raise ValueError("frame_interval_ms must be greater than zero")
-        if speed <= 0:
-            raise ValueError("speed must be greater than zero")
         self.start_time = start_time
         self.archive_interval = frame_interval_ms / 1000.0
-        self.wall_interval = self.archive_interval / speed
-        self.started_at = time.monotonic()
         self.tick = 0
 
     @property
@@ -24,17 +19,8 @@ class PlaybackClock:
             seconds=self.tick * self.archive_interval,
         )
 
-    @property
-    def playback_lag_ms(self):
-        deadline = self.started_at + (self.tick + 1) * self.wall_interval
-        return max(0, round((time.monotonic() - deadline) * 1000))
-
     def advance(self):
         self.tick += 1
-        deadline = self.started_at + self.tick * self.wall_interval
-        delay = deadline - time.monotonic()
-        if delay > 0:
-            time.sleep(delay)
 
 
 def capture_needs_resync(expected_time, source_time, archive_interval):

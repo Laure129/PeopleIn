@@ -2,15 +2,29 @@ import io
 import json
 import tempfile
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 from peoplein.config import stream_cameras
 from peoplein.run import analyze_second, people_inside_match_pct
 from peoplein.stream import _decode_camera
+from peoplein.sync import PlaybackClock
 
 
 class ArchiveRunTest(unittest.TestCase):
+    def test_archive_clock_advances_without_playback_settings(self):
+        started = datetime(2026, 1, 1)
+        clock = PlaybackClock(started, 333)
+
+        clock.advance()
+
+        self.assertEqual(clock.tick, 1)
+        self.assertEqual(
+            clock.expected_archive_time,
+            started + timedelta(milliseconds=333),
+        )
+
     def test_placeholder_analysis_and_accuracy(self):
         self.assertEqual(stream_cameras(), ("entrance", "loby"))
         self.assertEqual(

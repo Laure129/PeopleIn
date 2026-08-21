@@ -13,7 +13,7 @@ from pathlib import Path
 from . import __version__
 from .config import (
     PROJECT_DIR, archive_dir as configured_archive_dir, frame_interval_ms,
-    playback_speed, stream_cameras,
+    stream_cameras,
 )
 from .stream import (
     FRAME_HEIGHT, FRAME_WIDTH, FrameStore, build_archive_plan, start_decoders,
@@ -149,7 +149,7 @@ def main():
         )
         store = FrameStore(counts)
         threads = start_decoders(args.archive_dir, plan, store)
-        clock = PlaybackClock(args.start_time, interval_ms, playback_speed())
+        clock = PlaybackClock(args.start_time, interval_ms)
         decoded = 0
         max_skew = 0
         current_second = 0
@@ -208,9 +208,10 @@ def main():
             thread.join()
 
         accuracy = people_inside_match_pct(telemetry, reference_path)
-        wall_time = round(time.monotonic() - started, 3)
+        processing_time = round(time.monotonic() - started, 3)
         summary = {
-            "wall_time_seconds": wall_time,
+            "video_duration_seconds": args.duration,
+            "processing_time_seconds": processing_time,
             "people_inside_match_pct": accuracy,
             "log_file": str(log_path.relative_to(PROJECT_DIR)),
             "command": command,
@@ -221,8 +222,10 @@ def main():
         )
         log.info(
             "run completed seconds=%d frames=%d ticks=%d max_skew_ms=%d "
-            "people_inside_match_pct=%s wall_time_seconds=%s",
-            len(telemetry), decoded, clock.tick, max_skew, accuracy, wall_time,
+            "people_inside_match_pct=%s video_duration_seconds=%d "
+            "processing_time_seconds=%s",
+            len(telemetry), decoded, clock.tick, max_skew, accuracy,
+            args.duration, processing_time,
         )
     except Exception:
         log.exception("run failed")
