@@ -1,4 +1,4 @@
-"""SQLite tracking for archive files that were read successfully."""
+"""Track successfully read archive files in SQLite."""
 
 import sqlite3
 from contextlib import closing

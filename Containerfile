@@ -12,8 +12,9 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py archive_stream.py camera_sync.py config.py config.toml database.py ./
+COPY peoplein ./peoplein
+COPY config.toml ./
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "peoplein.api:app", "--host", "0.0.0.0", "--port", "8000"]

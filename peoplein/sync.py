@@ -1,4 +1,4 @@
-"""Shared archive clock and camera synchronization checks."""
+"""Shared playback clock and camera synchronization checks."""
 
 import time
 from datetime import timedelta

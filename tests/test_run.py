@@ -3,8 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from archive_stream import analyze_second, people_inside_match_pct
-from config import stream_cameras
+from peoplein.config import stream_cameras
+from peoplein.run import analyze_second, people_inside_match_pct
 
 
 class ArchiveRunTest(unittest.TestCase):
