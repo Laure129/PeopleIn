@@ -2,3 +2,26 @@ debug = false
 archive_dir = "archive_short"
 frame_interval_ms = 333
 playback_speed = 1.0
+
+[cameras.entrance]
+location = "inside"
+view = "entrance"
+
+[cameras.hall1]
+location = "inside"
+
+[cameras.hall2]
+location = "inside"
+
+[cameras.hall3]
+location = "inside"
+
+[cameras.hall4]
+location = "inside"
+
+[cameras.hall5]
+location = "inside"
+
+[cameras.loby]
+location = "outside"
+view = "exit"
