@@ -1,4 +1,4 @@
-debug = false
+debug = true
 archive_dir = "archive_short"
 frame_interval_ms = 333
 
