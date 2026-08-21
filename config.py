@@ -48,3 +48,24 @@ def archive_dir(config_path=CONFIG_PATH):
     ):
         raise ValueError("config archive_dir must be a resource directory name")
     return PROJECT_DIR / "resources" / value
+
+
+def stream_cameras(config_path=CONFIG_PATH):
+    cameras = _settings(config_path).get("cameras")
+    if not isinstance(cameras, dict):
+        raise ValueError("config cameras must be a table")
+
+    selected = {}
+    for camera, values in cameras.items():
+        if not isinstance(values, dict):
+            raise ValueError(f"config camera {camera} must be a table")
+        view = values.get("view")
+        if view not in {"entrance", "exit"}:
+            continue
+        if view in selected:
+            raise ValueError(f"config has multiple cameras with view {view}")
+        selected[view] = camera
+
+    if set(selected) != {"entrance", "exit"}:
+        raise ValueError("config must define entrance and exit camera views")
+    return selected["entrance"], selected["exit"]
