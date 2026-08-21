@@ -20,7 +20,6 @@ from .sync import capture_needs_resync
 
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 360
-FRAME_STRIDE = 25
 SEGMENT_SECONDS = 305
 log = logging.getLogger(__name__)
 
@@ -189,29 +188,23 @@ def _decode_camera(archive_dir, camera, needed_by_file, store, database_path=Non
             needed = needed_by_file[mkv]
             if not needed:
                 continue
-            extras = sorted(index for index in needed if index % FRAME_STRIDE)
-            terms = [f"not(mod(n,{FRAME_STRIDE}))"] + [
-                f"eq(n,{index})" for index in extras
-            ]
             command = [
                 "ffmpeg", "-v", "error", "-threads", "1",
                 "-skip_loop_filter", "all",
                 "-i", str(Path(archive_dir) / camera / mkv),
-                "-vf", f"select='{'+'.join(terms)}',scale={FRAME_WIDTH}:{FRAME_HEIGHT}",
+                "-vf", f"scale={FRAME_WIDTH}:{FRAME_HEIGHT}",
                 "-fps_mode", "passthrough",
-                "-frames:v", str(max(needed) // FRAME_STRIDE + 1 + len(extras)),
+                "-frames:v", str(max(needed) + 1),
                 "-f", "rawvideo", "-pix_fmt", "bgr24", "-",
             ]
             process = subprocess.Popen(
                 command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             )
-            emitted = _emitted_indices(FRAME_STRIDE, extras)
             remaining = set(needed)
-            while True:
+            for index in range(max(needed) + 1):
                 chunk = _read_exactly(process.stdout, frame_bytes)
                 if chunk is None:
                     break
-                index = next(emitted)
                 if index not in needed:
                     continue
                 frame = np.frombuffer(chunk, dtype=np.uint8).reshape(
@@ -234,19 +227,6 @@ def _decode_camera(archive_dir, camera, needed_by_file, store, database_path=Non
         store.fail(error)
     finally:
         store.decoder_done()
-
-
-def _emitted_indices(stride, extras):
-    pending = iter(sorted(extras))
-    extra = next(pending, None)
-    ordinal = 0
-    while True:
-        index = ordinal * stride
-        ordinal += 1
-        while extra is not None and extra < index:
-            yield extra
-            extra = next(pending, None)
-        yield index
 
 
 def _read_exactly(stream, size):

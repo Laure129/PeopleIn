@@ -1,10 +1,13 @@
+import io
 import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 from peoplein.config import stream_cameras
 from peoplein.run import analyze_second, people_inside_match_pct
+from peoplein.stream import _decode_camera
 
 
 class ArchiveRunTest(unittest.TestCase):
@@ -35,6 +38,26 @@ class ArchiveRunTest(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(people_inside_match_pct(telemetry, path), 50.0)
+
+    @patch("peoplein.stream.FRAME_WIDTH", 1)
+    @patch("peoplein.stream.FRAME_HEIGHT", 1)
+    @patch("peoplein.stream.subprocess.Popen")
+    def test_decoder_command_stays_small_for_long_run(self, popen):
+        process = popen.return_value
+        process.stdout = io.BytesIO(b"\0" * 3000)
+        process.stderr = io.BytesIO()
+        process.wait.return_value = 0
+        store = Mock()
+
+        _decode_camera("archive", "entrance", {"video.mkv": {0, 333, 999}}, store)
+
+        command = popen.call_args.args[0]
+        self.assertNotIn("select=", " ".join(command))
+        self.assertEqual(command[command.index("-frames:v") + 1], "1000")
+        self.assertEqual(
+            [call.args[2] for call in store.put.call_args_list],
+            [0, 333, 999],
+        )
 
 
 if __name__ == "__main__":
