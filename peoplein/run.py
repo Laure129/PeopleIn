@@ -13,8 +13,9 @@ from pathlib import Path
 from . import __version__
 from .config import (
     PROJECT_DIR, archive_dir as configured_archive_dir, frame_interval_ms,
-    stream_cameras,
+    prepare_benchmark_enabled, stream_cameras,
 )
+from .prepare_benchmark import prepare_benchmark
 from .stream import (
     FRAME_HEIGHT, FRAME_WIDTH, FrameStore, build_archive_plan, start_decoders,
 )
@@ -112,6 +113,9 @@ def main():
     ]
     if existing:
         parser.error(f"run output already exists: {existing[0]}")
+
+    if prepare_benchmark_enabled():
+        prepare_benchmark()
 
     run_dir.mkdir(parents=True, exist_ok=True)
     command = shlex.join([

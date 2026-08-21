@@ -25,6 +25,14 @@ def debug_mode(config_path=CONFIG_PATH):
     return debug
 
 
+def prepare_benchmark_enabled(config_path=CONFIG_PATH):
+    """Return whether competing processes should be stopped before a run."""
+    enabled = _settings(config_path).get("prepare_benchmark", False)
+    if not isinstance(enabled, bool):
+        raise ValueError("config prepare_benchmark must be true or false")
+    return enabled
+
+
 def frame_interval_ms(config_path=CONFIG_PATH):
     value = _settings(config_path).get("frame_interval_ms", 333)
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:

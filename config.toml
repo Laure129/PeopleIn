@@ -1,4 +1,5 @@
 debug = true
+prepare_benchmark = true
 archive_dir = "archive_short"
 frame_interval_ms = 333
 
