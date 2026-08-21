@@ -1,3 +1,4 @@
 debug = false
+archive_dir = "archive_short"
 frame_interval_ms = 333
 playback_speed = 1.0

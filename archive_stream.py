@@ -1,6 +1,7 @@
 """Stream synchronized raw BGR frames from the local MKV archive."""
 
 import argparse
+import json
 import logging
 import subprocess
 import threading
@@ -14,7 +15,8 @@ import numpy as np
 
 from camera_sync import PlaybackClock, archive_skew_ms, capture_needs_resync
 from config import (
-    DATABASE_PATH, PROJECT_DIR, debug_mode, frame_interval_ms, playback_speed,
+    DATABASE_PATH, archive_dir as configured_archive_dir, debug_mode,
+    frame_interval_ms, playback_speed,
 )
 from database import ensure_unread, mark_read
 
@@ -52,17 +54,18 @@ def _file_covering(files, target):
 def _video_info(path):
     output = subprocess.check_output([
         "ffprobe", "-v", "error", "-count_packets", "-select_streams", "v:0",
-        "-show_entries", "stream=avg_frame_rate,nb_read_packets",
-        "-of", "csv=p=0", str(path),
-    ], text=True).strip()
-    fps_text, frame_count_text = output.split(",")
-    fps = float(Fraction(fps_text))
-    frame_count = int(frame_count_text)
+        "-show_entries", "stream=avg_frame_rate,nb_read_packets,start_time",
+        "-of", "json", str(path),
+    ], text=True)
+    stream = json.loads(output)["streams"][0]
+    fps = float(Fraction(stream["avg_frame_rate"]))
+    frame_count = int(stream["nb_read_packets"])
+    start_pts = float(stream.get("start_time", 0))
     if fps <= 0 or frame_count <= 0:
         raise RuntimeError(
             f"invalid video metadata for {path}: fps={fps}, frames={frame_count}"
         )
-    return fps, frame_count
+    return fps, frame_count, start_pts
 
 
 def build_archive_plan(archive_dir, start_time, end_time, interval_ms=None):
@@ -92,12 +95,15 @@ def build_archive_plan(archive_dir, start_time, end_time, interval_ms=None):
                 raise ValueError(f"{camera} archive does not cover {target}")
             if item["name"] not in info:
                 info[item["name"]] = _video_info(camera_dir / item["name"])
-            fps, frame_count = info[item["name"]]
+            fps, frame_count, start_pts = info[item["name"]]
+            offset_seconds = (
+                (target - item["timestamp"]).total_seconds() - start_pts
+            )
             frame_index = min(
-                round((target - item["timestamp"]).total_seconds() * fps),
+                max(round(offset_seconds * fps), 0),
                 frame_count - 1,
             )
-            pts_seconds = frame_index / fps
+            pts_seconds = start_pts + frame_index / fps
             source_time = item["timestamp"] + timedelta(seconds=pts_seconds)
             if capture_needs_resync(target, source_time, interval):
                 raise RuntimeError(
@@ -296,7 +302,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--archive-dir", type=Path,
-        default=PROJECT_DIR / "resources" / "archive_debug_cache",
+        default=configured_archive_dir(),
     )
     parser.add_argument("--start-time", type=datetime.fromisoformat, required=True)
     parser.add_argument("--duration", type=float, default=1.0)

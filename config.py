@@ -37,3 +37,14 @@ def playback_speed(config_path=CONFIG_PATH):
     if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
         raise ValueError("config playback_speed must be greater than zero")
     return float(value)
+
+
+def archive_dir(config_path=CONFIG_PATH):
+    value = _settings(config_path).get("archive_dir", "archive_debug_cache")
+    if (
+        not isinstance(value, str)
+        or value in {"", ".", ".."}
+        or Path(value).name != value
+    ):
+        raise ValueError("config archive_dir must be a resource directory name")
+    return PROJECT_DIR / "resources" / value
