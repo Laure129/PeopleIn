@@ -1,1 +1,3 @@
 debug = false
+frame_interval_ms = 333
+playback_speed = 1.0

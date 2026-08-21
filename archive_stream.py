@@ -12,7 +12,10 @@ from pathlib import Path
 
 import numpy as np
 
-from config import DATABASE_PATH, PROJECT_DIR, debug_mode
+from camera_sync import PlaybackClock, archive_skew_ms, capture_needs_resync
+from config import (
+    DATABASE_PATH, PROJECT_DIR, debug_mode, frame_interval_ms, playback_speed,
+)
 from database import ensure_unread, mark_read
 
 CAMERAS = ("entrance", "hall1", "hall2", "hall3", "hall4", "hall5", "loby")
@@ -62,13 +65,17 @@ def _video_info(path):
     return fps, frame_count
 
 
-def build_archive_plan(archive_dir, start_time, end_time):
-    """Build a synchronized one-frame-per-second plan for every camera."""
+def build_archive_plan(archive_dir, start_time, end_time, interval_ms=None):
+    """Build a timestamped frame plan from one shared camera clock."""
     archive_dir = Path(archive_dir)
     if end_time <= start_time:
         raise ValueError("archive end time must be after start time")
 
-    interval = FRAME_STRIDE / SOURCE_FPS
+    if interval_ms is None:
+        interval_ms = frame_interval_ms()
+    if interval_ms <= 0:
+        raise ValueError("interval_ms must be greater than zero")
+    interval = interval_ms / 1000.0
     plan = {}
     for camera in CAMERAS:
         camera_dir = archive_dir / camera
@@ -90,10 +97,19 @@ def build_archive_plan(archive_dir, start_time, end_time):
                 round((target - item["timestamp"]).total_seconds() * fps),
                 frame_count - 1,
             )
+            pts_seconds = frame_index / fps
+            source_time = item["timestamp"] + timedelta(seconds=pts_seconds)
+            if capture_needs_resync(target, source_time, interval):
+                raise RuntimeError(
+                    f"{camera} cannot synchronize: expected {target}, "
+                    f"source {source_time}"
+                )
             refs.append({
                 "camera": camera,
                 "mkv": item["name"],
                 "frame_index": frame_index,
+                "mkv_pts_seconds": pts_seconds,
+                "mkv_pts_time": source_time,
             })
             tick += 1
         plan[camera] = refs
@@ -288,10 +304,12 @@ def main():
     if args.duration <= 0:
         parser.error("--duration must be greater than zero")
 
+    interval_ms = frame_interval_ms()
     plan = build_archive_plan(
         args.archive_dir,
         args.start_time,
         args.start_time + timedelta(seconds=args.duration),
+        interval_ms,
     )
     counts = Counter(
         (ref["camera"], ref["mkv"], ref["frame_index"])
@@ -300,17 +318,40 @@ def main():
     )
     store = FrameStore(counts)
     threads = start_decoders(args.archive_dir, plan, store)
+    clock = PlaybackClock(args.start_time, interval_ms, playback_speed())
     decoded = 0
+    max_skew = 0
     for tick in range(len(plan[CAMERAS[0]])):
+        stats = {}
         for camera in CAMERAS:
             ref = plan[camera][tick]
+            if capture_needs_resync(
+                clock.expected_archive_time,
+                ref["mkv_pts_time"],
+                clock.archive_interval,
+            ):
+                raise RuntimeError(
+                    f"{camera} drifted from playback clock at tick {tick}"
+                )
             frame = store.get(camera, ref["mkv"], ref["frame_index"])
             if frame.shape != (FRAME_HEIGHT, FRAME_WIDTH, 3):
                 raise RuntimeError(f"unexpected frame shape: {frame.shape}")
+            stats[camera] = {
+                "playback_tick": tick,
+                "mkv_pts_timestamp": ref["mkv_pts_time"].timestamp(),
+            }
             decoded += 1
+        skew = archive_skew_ms(stats) or 0
+        if skew > interval_ms:
+            raise RuntimeError(f"camera skew is {skew} ms at tick {tick}")
+        max_skew = max(max_skew, skew)
+        clock.advance()
     for thread in threads:
         thread.join()
-    print(f"decoded {decoded} raw BGR frames")
+    print(
+        f"decoded {decoded} raw BGR frames across {clock.tick} synchronized "
+        f"ticks; max skew={max_skew} ms"
+    )
 
 
 if __name__ == "__main__":
