@@ -1,0 +1,6 @@
+{
+  "wall_time_seconds": 123.474,
+  "people_inside_match_pct": 15.447154,
+  "log_file": "runs/0.1.0/run.log",
+  "command": "/usr/local/bin/python -m peoplein.run --start-time 2026-07-13T23:57:01 --duration 123"
+}

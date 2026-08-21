@@ -1,0 +1,5 @@
+2026-08-21 22:11:04,703 INFO __main__: run started cameras=entrance,loby archive=/app/resources/archive_short reference=/app/resources/archive_people_telemetry_short.jsonl
+2026-08-21 22:12:30,218 INFO peoplein.stream: decoded loby/20260713-235327.mkv: 259 frames
+2026-08-21 22:13:07,180 INFO peoplein.stream: decoded loby/20260713-235827.mkv: 111 frames
+2026-08-21 22:13:07,183 INFO peoplein.stream: decoded entrance/20260713-235604.mkv: 370 frames
+2026-08-21 22:13:08,177 INFO __main__: run completed seconds=123 frames=740 ticks=370 max_skew_ms=40 people_inside_match_pct=15.447154 wall_time_seconds=123.474
