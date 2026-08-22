@@ -18,7 +18,55 @@ class FakeDetector:
         return [(box, 0.9) for box in next(self.boxes)]
 
 
+class ScoredDetector:
+    def __init__(self, detections):
+        self.detections = iter(detections)
+
+    def __call__(self, _frame):
+        return next(self.detections)
+
+
 class DoorCounterTest(unittest.TestCase):
+    def test_low_confidence_is_limited_to_loby_door_zone(self):
+        directions = {
+            "left_to_right": "entry",
+            "right_to_left": "exit",
+        }
+        cameras = {
+            "loby": {
+                "line": ((0, 0), (0, 20)),
+                "directions": directions,
+                "door_confidence": 0.15,
+                "door_confidence_radius_px": 5,
+            },
+            "entrance": {"line": ((0, 0), (0, 20)), "directions": directions},
+        }
+        detector = ScoredDetector([
+            [((0, 0, 4, 10), 0.2)],
+            [((18, 0, 4, 10), 0.2)],
+            [((0, 0, 4, 10), 0.2)],
+        ])
+        frame = np.zeros((20, 30, 3), dtype=np.uint8)
+        started = datetime(2026, 1, 2)
+
+        with tempfile.TemporaryDirectory() as directory:
+            counter = DoorCounter(
+                cameras=cameras,
+                model_path="unused",
+                confidence=0.35,
+                agreement_seconds=15,
+                crossing_margin_px=1,
+                database_path=Path(directory) / "people.sqlite3",
+                app_version="test",
+                detector=detector,
+            )
+            counter.update("loby", frame, started)
+            counter.update("loby", frame, started + timedelta(seconds=1))
+            counter.update("entrance", frame, started + timedelta(seconds=2))
+
+            self.assertEqual(len(counter.tracks["loby"]), 1)
+            self.assertEqual(len(counter.tracks["entrance"]), 0)
+
     def test_both_cameras_record_and_confirm_entry_and_exit(self):
         cameras = {
             camera: {

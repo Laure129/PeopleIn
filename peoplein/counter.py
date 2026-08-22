@@ -76,7 +76,15 @@ class DoorCounter:
         diagnostics_path=None, evidence_dir=None,
     ):
         self.cameras = cameras
-        self.detector = detector or PersonDetector(model_path, confidence)
+        self.confidence = confidence
+        detector_confidence = min(
+            [confidence]
+            + [
+                camera.get("door_confidence", confidence)
+                for camera in cameras.values()
+            ]
+        )
+        self.detector = detector or PersonDetector(model_path, detector_confidence)
         self.agreement_seconds = agreement_seconds
         self.crossing_margin_px = crossing_margin_px
         self.database_path = database_path
@@ -103,7 +111,16 @@ class DoorCounter:
         geometry = self.cameras[camera]
         line = geometry["line"]
         started = time.monotonic()
-        detections = self.detector(frame)
+        detections = [
+            (bbox, score)
+            for bbox, score in self.detector(frame)
+            if score >= self.confidence or (
+                score >= geometry.get("door_confidence", self.confidence)
+                and self._distance_to_segment(
+                    (bbox[0] + bbox[2] / 2, bbox[1] + bbox[3]), line,
+                ) <= geometry.get("door_confidence_radius_px", 0)
+            )
+        ]
         inference_ms = round((time.monotonic() - started) * 1000, 3)
         feet = [
             (x + width / 2, y + height)
@@ -226,6 +243,16 @@ class DoorCounter:
             (point[0] - x1) * (y2 - y1)
             - (point[1] - y1) * (x2 - x1)
         ) / math.hypot(x2 - x1, y2 - y1)
+
+    @staticmethod
+    def _distance_to_segment(point, line):
+        start, end = line
+        dx, dy = end[0] - start[0], end[1] - start[1]
+        fraction = max(0, min(1, (
+            (point[0] - start[0]) * dx + (point[1] - start[1]) * dy
+        ) / (dx * dx + dy * dy)))
+        closest = (start[0] + fraction * dx, start[1] + fraction * dy)
+        return math.dist(point, closest)
 
     def _side(self, point, line):
         distance = self._signed_distance(point, line)
@@ -367,6 +394,16 @@ class DoorCounter:
             return
         for camera, (frame, frame_time) in self.latest_frames.items():
             annotated = frame.copy()
+            radius = round(
+                self.cameras[camera].get("door_confidence_radius_px", 0)
+            )
+            if radius:
+                overlay = annotated.copy()
+                cv2.line(
+                    overlay, *self.cameras[camera]["line"],
+                    (0, 165, 255), radius * 2, cv2.LINE_AA,
+                )
+                cv2.addWeighted(overlay, 0.2, annotated, 0.8, 0, annotated)
             cv2.line(
                 annotated, *self.cameras[camera]["line"],
                 (0, 0, 255), 2, cv2.LINE_AA,

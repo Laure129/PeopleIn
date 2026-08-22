@@ -118,9 +118,24 @@ def door_counter_settings(config_path=CONFIG_PATH):
         }
         if set(directions) != {"left_to_right", "right_to_left"}:
             raise ValueError(f"config camera {camera} directions are invalid")
+        door_confidence = values.get("door_confidence", confidence)
+        radius = values.get("door_confidence_radius_px", 0)
+        if isinstance(door_confidence, bool) or not isinstance(
+            door_confidence, (int, float)
+        ) or not 0 < door_confidence <= confidence:
+            raise ValueError(
+                f"config camera {camera} door_confidence is invalid"
+            )
+        if isinstance(radius, bool) or not isinstance(radius, (int, float)) \
+                or radius < 0:
+            raise ValueError(
+                f"config camera {camera} door_confidence_radius_px is invalid"
+            )
         result[camera] = {
             "line": tuple(tuple(point) for point in line),
             "directions": directions,
+            "door_confidence": float(door_confidence),
+            "door_confidence_radius_px": float(radius),
         }
     return {
         "model_path": path.resolve().parent / model,

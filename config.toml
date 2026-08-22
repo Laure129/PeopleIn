@@ -33,5 +33,7 @@ location = "inside"
 location = "outside"
 view = "exit"
 door_line = [[255, 120], [280, 355]]
+door_confidence = 0.15
+door_confidence_radius_px = 120
 entry_direction = "left_to_right"
 exit_direction = "right_to_left"
