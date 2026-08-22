@@ -1,5 +1,5 @@
-2026-08-22 21:18:20,523 INFO __main__: run started cameras=entrance,loby archive=/home/codex/PeopleIn/resources/archive_short reference=/home/codex/PeopleIn/resources/archive_people_telemetry_short.jsonl
-2026-08-22 21:18:55,938 INFO peoplein.stream: decoded loby/20260713-235327.mkv: 259 frames
-2026-08-22 21:19:10,880 INFO peoplein.stream: decoded entrance/20260713-235604.mkv: 370 frames
-2026-08-22 21:19:10,945 INFO peoplein.stream: decoded loby/20260713-235827.mkv: 111 frames
-2026-08-22 21:19:11,265 INFO __main__: run completed seconds=123 frames=740 ticks=370 max_skew_ms=40 people_inside_match_pct=99.186992 video_duration_seconds=123 processing_time_seconds=50.741 people_inside=4 confidence=0.0
+2026-08-22 21:44:39,373 INFO __main__: run started cameras=entrance,loby archive=/home/codex/PeopleIn/resources/archive_short reference=/home/codex/PeopleIn/resources/archive_people_telemetry_short.jsonl
+2026-08-22 21:45:14,218 INFO peoplein.stream: decoded loby/20260713-235327.mkv: 259 frames
+2026-08-22 21:45:29,339 INFO peoplein.stream: decoded entrance/20260713-235604.mkv: 370 frames
+2026-08-22 21:45:29,402 INFO peoplein.stream: decoded loby/20260713-235827.mkv: 111 frames
+2026-08-22 21:45:29,728 INFO __main__: run completed seconds=123 frames=740 ticks=370 max_skew_ms=40 people_inside_match_pct=99.186992 video_duration_seconds=123 processing_time_seconds=50.355 people_inside=4 confidence=0.0
