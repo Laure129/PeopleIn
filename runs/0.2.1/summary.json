@@ -1,0 +1,20 @@
+{
+  "video_duration_seconds": 123,
+  "processing_time_seconds": 50.939,
+  "people_inside_match_pct": 99.186992,
+  "entered_total": 4,
+  "exited_total": 0,
+  "people_inside": 4,
+  "people_inside_confidence": 0.0,
+  "observations_by_camera": {
+    "entrance": 4,
+    "loby": 0
+  },
+  "confirmed_passages": 0,
+  "unconfirmed_passages": 4,
+  "direction_mismatches": 0,
+  "log_file": "runs/0.2.1/run.log",
+  "diagnostics_file": "runs/0.2.1/diagnostics.jsonl",
+  "evidence_dir": "runs/0.2.1/evidence",
+  "command": "/home/codex/.cache/uv/builds-v0/.tmpTEUMy6/bin/python -m peoplein.run --start-time 2026-07-13T23:57:01 --duration 123"
+}
