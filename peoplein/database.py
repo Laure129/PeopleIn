@@ -47,7 +47,7 @@ def mark_read(database_path, path):
 
 def record_passage(database_path, passed_at, app_version, camera, direction):
     with closing(_connect(database_path)) as connection:
-        connection.execute(
+        cursor = connection.execute(
             "INSERT INTO door_passages("
             "passed_at, app_version, camera, direction) VALUES (?, ?, ?, ?)",
             (
@@ -56,3 +56,4 @@ def record_passage(database_path, passed_at, app_version, camera, direction):
             ),
         )
         connection.commit()
+        return cursor.lastrowid

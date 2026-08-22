@@ -1,7 +1,12 @@
-"""Detect people and count directed door-line crossings."""
+"""Detect people, count door crossings, and write run diagnostics."""
 
+import json
 import math
+import time
+from collections import Counter
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -50,7 +55,10 @@ class PersonDetector:
         indices = cv2.dnn.NMSBoxes(
             boxes, scores, self.confidence, 0.45,
         )
-        return [boxes[int(index)] for index in np.asarray(indices).reshape(-1)]
+        return [
+            (boxes[int(index)], scores[int(index)])
+            for index in np.asarray(indices).reshape(-1)
+        ]
 
 
 @dataclass
@@ -65,6 +73,7 @@ class DoorCounter:
     def __init__(
         self, cameras, model_path, confidence, agreement_seconds,
         crossing_margin_px, database_path, app_version, detector=None,
+        diagnostics_path=None, evidence_dir=None,
     ):
         self.cameras = cameras
         self.detector = detector or PersonDetector(model_path, confidence)
@@ -75,14 +84,45 @@ class DoorCounter:
         self.tracks = {camera: {} for camera in cameras}
         self.next_track_id = 1
         self.events = []
+        self.observations = []
+        self.observations_by_camera = Counter()
+        self.mismatch_pairs = set()
+        self.latest_frames = {}
+        self.latest_labels = {}
+        self.evidence_dir = Path(evidence_dir) if evidence_dir else None
+        if self.evidence_dir:
+            self.evidence_dir.mkdir(parents=True, exist_ok=False)
+        self.diagnostics = None
+        if diagnostics_path:
+            path = Path(diagnostics_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self.diagnostics = path.open("x", encoding="utf-8")
 
     def update(self, camera, frame, timestamp):
+        self._expire_events(timestamp)
         geometry = self.cameras[camera]
         line = geometry["line"]
+        started = time.monotonic()
+        detections = self.detector(frame)
+        inference_ms = round((time.monotonic() - started) * 1000, 3)
         feet = [
             (x + width / 2, y + height)
-            for x, y, width, height in self.detector(frame)
+            for (x, y, width, height), _ in detections
         ]
+        self.latest_frames[camera] = (frame.copy(), timestamp)
+        self._diagnostic(
+            "detection", timestamp, camera,
+            inference_ms=inference_ms,
+            detection_count=len(detections),
+            detections=[
+                {
+                    "bbox": list(map(int, bbox)),
+                    "confidence": round(float(score), 6),
+                }
+                for bbox, score in detections
+            ],
+        )
+
         tracks = self.tracks[camera]
         for track in tracks.values():
             track.misses += 1
@@ -97,60 +137,107 @@ class DoorCounter:
             key=lambda item: item[0],
         )
         used_tracks, used_feet = set(), set()
+        labels, crossings = [], []
         for distance, track_id, index in matches:
             if distance > 120 or track_id in used_tracks or index in used_feet:
                 continue
             used_tracks.add(track_id)
             used_feet.add(index)
-            direction = self._move_track(tracks[track_id], feet[index], line)
+            direction, previous_side = self._move_track(
+                tracks[track_id], feet[index], line,
+            )
+            bbox, score = detections[index]
+            labels.append((track_id, bbox, score, tracks[track_id].side))
+            self._track_diagnostic(
+                timestamp, camera, track_id, bbox, score, feet[index],
+                tracks[track_id].side, round(distance, 3), "matched", line,
+            )
             if direction is not None:
-                self._passage(
-                    timestamp, camera, geometry["directions"][direction],
-                )
+                crossings.append((
+                    track_id, geometry["directions"][direction], feet[index],
+                    previous_side, tracks[track_id].side,
+                ))
 
         for index, foot in enumerate(feet):
             if index in used_feet:
                 continue
             side = self._side(foot, line)
-            tracks[self.next_track_id] = Track(foot, side, foot)
+            track_id = self.next_track_id
+            tracks[track_id] = Track(foot, side, foot)
             self.next_track_id += 1
+            bbox, score = detections[index]
+            labels.append((track_id, bbox, score, side))
+            self._track_diagnostic(
+                timestamp, camera, track_id, bbox, score, foot, side,
+                None, "new", line,
+            )
+        self.latest_labels[camera] = labels
         for track_id in [
             track_id for track_id, track in tracks.items() if track.misses > 5
         ]:
             del tracks[track_id]
+        for track_id, direction, foot, previous_side, side in crossings:
+            self._passage(
+                timestamp, camera, direction, track_id, foot,
+                previous_side, side,
+            )
+
+    def _track_diagnostic(
+        self, timestamp, camera, track_id, bbox, score, foot, side,
+        match_distance, state, line,
+    ):
+        self._diagnostic(
+            "track_update", timestamp, camera,
+            track_id=track_id,
+            state=state,
+            bbox=list(map(int, bbox)),
+            detection_confidence=round(float(score), 6),
+            foot=[round(value, 3) for value in foot],
+            side=self._side_name(side),
+            signed_distance_to_line=round(self._signed_distance(foot, line), 3),
+            match_distance=match_distance,
+        )
 
     def _move_track(self, track, foot, line):
         track.misses = 0
         track.foot = foot
         side = self._side(foot, line)
         if side == 0:
-            return None
+            return None, None
         if track.side == 0 or side == track.side:
             track.side = side
             track.side_point = foot
-            return None
+            return None, None
         previous_side = track.side
         crossed = self._segments_intersect(track.side_point, foot, *line)
         track.side = side
         track.side_point = foot
         if not crossed:
-            return None
+            return None, None
         return (
             "left_to_right" if (previous_side, side) == (-1, 1)
-            else "right_to_left"
+            else "right_to_left",
+            previous_side,
         )
 
-    def _side(self, point, line):
+    def _signed_distance(self, point, line):
         (x1, y1), (x2, y2) = line
-        distance = (
+        return (
             (point[0] - x1) * (y2 - y1)
             - (point[1] - y1) * (x2 - x1)
         ) / math.hypot(x2 - x1, y2 - y1)
+
+    def _side(self, point, line):
+        distance = self._signed_distance(point, line)
         if distance < -self.crossing_margin_px:
             return -1
         if distance > self.crossing_margin_px:
             return 1
         return 0
+
+    @staticmethod
+    def _side_name(side):
+        return {-1: "left", 0: "line", 1: "right"}[side]
 
     @staticmethod
     def _segments_intersect(start, end, line_start, line_end):
@@ -166,40 +253,210 @@ class DoorCounter:
         line_fraction = (offset_x * move_y - offset_y * move_x) / denominator
         return 0 <= move_fraction <= 1 and 0 <= line_fraction <= 1
 
-    def _passage(self, timestamp, camera, direction):
-        record_passage(
+    def _passage(
+        self, timestamp, camera, direction, track_id, foot,
+        previous_side, side,
+    ):
+        observation_id = record_passage(
             self.database_path, timestamp, self.app_version, camera, direction,
         )
+        observation = {
+            "id": observation_id,
+            "timestamp": timestamp,
+            "camera": camera,
+            "direction": direction,
+        }
+        self.observations.append(observation)
+        self.observations_by_camera[camera] += 1
+        self._diagnostic(
+            "line_crossing", timestamp, camera,
+            observation_id=observation_id,
+            track_id=track_id,
+            direction=direction,
+            foot=[round(value, 3) for value in foot],
+            previous_side=self._side_name(previous_side),
+            side=self._side_name(side),
+        )
+
         # ponytail: time-only agreement; add cross-camera ReID if simultaneous
         # passages prove that this pairs different people.
         matches = [
             event for event in self.events
-            if event["direction"] == direction
-            and camera not in event["cameras"]
+            if len(event["observations"]) == 1
+            and event["direction"] == direction
+            and camera != event["observations"][0]["camera"]
             and abs((timestamp - event["timestamp"]).total_seconds())
             <= self.agreement_seconds
         ]
+        opposites = [
+            event for event in self.events
+            if len(event["observations"]) == 1
+            and event["direction"] != direction
+            and camera != event["observations"][0]["camera"]
+            and abs((timestamp - event["timestamp"]).total_seconds())
+            <= self.agreement_seconds
+        ]
+        if opposites:
+            other = min(
+                opposites,
+                key=lambda item: abs(
+                    (timestamp - item["timestamp"]).total_seconds()
+                ),
+            )["observations"][0]
+            pair = frozenset((observation_id, other["id"]))
+            if pair not in self.mismatch_pairs:
+                self.mismatch_pairs.add(pair)
+                self._diagnostic(
+                    "direction_mismatch", timestamp,
+                    observation_ids=sorted(pair),
+                    cameras=[other["camera"], camera],
+                    directions=[other["direction"], direction],
+                )
         if matches:
             event = min(
                 matches,
-                key=lambda item: abs((timestamp - item["timestamp"]).total_seconds()),
+                key=lambda item: abs(
+                    (timestamp - item["timestamp"]).total_seconds()
+                ),
             )
-            event["cameras"].add(camera)
+            event["observations"].append(observation)
+            delta = abs((timestamp - event["timestamp"]).total_seconds())
+            self._diagnostic(
+                "passage_agreement", timestamp,
+                observation_ids=[item["id"] for item in event["observations"]],
+                cameras=[item["camera"] for item in event["observations"]],
+                direction=direction,
+                delta_seconds=round(delta, 3),
+            )
         else:
             self.events.append({
                 "timestamp": timestamp,
                 "direction": direction,
-                "cameras": {camera},
+                "observations": [observation],
+                "unconfirmed_logged": False,
             })
+        self._save_evidence(observation_id, timestamp)
 
-    def snapshot(self):
+    def _expire_events(self, timestamp, force=False):
+        for event in self.events:
+            if len(event["observations"]) != 1 or event["unconfirmed_logged"]:
+                continue
+            age = (timestamp - event["timestamp"]).total_seconds()
+            if not force and age <= self.agreement_seconds:
+                continue
+            observation = event["observations"][0]
+            opposite = any(
+                pair for pair in self.mismatch_pairs
+                if observation["id"] in pair
+            )
+            self._diagnostic(
+                "passage_unconfirmed", timestamp, observation["camera"],
+                observation_id=observation["id"],
+                passage_time=self._timestamp(observation["timestamp"]),
+                direction=observation["direction"],
+                waited_seconds=round(max(age, 0), 3),
+                reason=(
+                    "direction_mismatch" if opposite
+                    else "no_matching_crossing"
+                ),
+            )
+            event["unconfirmed_logged"] = True
+
+    def _save_evidence(self, observation_id, timestamp):
+        if not self.evidence_dir:
+            return
+        for camera, (frame, frame_time) in self.latest_frames.items():
+            annotated = frame.copy()
+            cv2.line(
+                annotated, *self.cameras[camera]["line"],
+                (0, 0, 255), 2, cv2.LINE_AA,
+            )
+            for track_id, bbox, score, side in self.latest_labels.get(camera, []):
+                x, y, width, height = map(int, bbox)
+                cv2.rectangle(
+                    annotated, (x, y), (x + width, y + height), (0, 255, 0), 2,
+                )
+                cv2.circle(
+                    annotated, (x + width // 2, y + height), 4, (255, 0, 0), -1,
+                )
+                cv2.putText(
+                    annotated,
+                    f"track={track_id} conf={score:.2f} {self._side_name(side)}",
+                    (x, max(15, y - 5)), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.45, (0, 255, 0), 1, cv2.LINE_AA,
+                )
+            cv2.putText(
+                annotated,
+                f"passage={observation_id} event={self._timestamp(timestamp)}",
+                (8, 18), cv2.FONT_HERSHEY_SIMPLEX,
+                0.45, (255, 255, 255), 1, cv2.LINE_AA,
+            )
+            cv2.putText(
+                annotated,
+                f"camera={camera} frame={self._timestamp(frame_time)}",
+                (8, 36), cv2.FONT_HERSHEY_SIMPLEX,
+                0.45, (255, 255, 255), 1, cv2.LINE_AA,
+            )
+            target = self.evidence_dir / f"passage_{observation_id}_{camera}.jpg"
+            if not cv2.imwrite(str(target), annotated):
+                raise RuntimeError(f"cannot write evidence image: {target}")
+
+    def _diagnostic(self, event, timestamp, camera=None, **values):
+        if not self.diagnostics:
+            return
+        record = {
+            "archive_time": self._timestamp(timestamp),
+            "wall_time": datetime.now().astimezone().isoformat(
+                timespec="milliseconds"
+            ),
+            "app_version": self.app_version,
+            "camera": camera,
+            "event": event,
+            **values,
+        }
+        self.diagnostics.write(json.dumps(record, ensure_ascii=False) + "\n")
+        self.diagnostics.flush()
+
+    @staticmethod
+    def _timestamp(value):
+        return value.isoformat(sep=" ", timespec="milliseconds")
+
+    def snapshot(self, timestamp=None):
         entered = sum(event["direction"] == "entry" for event in self.events)
         exited = sum(event["direction"] == "exit" for event in self.events)
-        confirmed = sum(len(event["cameras"]) > 1 for event in self.events)
+        confirmed = sum(
+            len(event["observations"]) > 1 for event in self.events
+        )
         confidence = confirmed / len(self.events) if self.events else 1.0
-        return {
+        result = {
             "entered_total": entered,
             "exited_total": exited,
             "people_inside": max(entered - exited, 0),
             "people_inside_confidence": round(confidence, 6),
         }
+        if timestamp is not None:
+            self._diagnostic("counter_snapshot", timestamp, **result)
+        return result
+
+    def diagnostic_summary(self):
+        return {
+            "observations_by_camera": {
+                camera: self.observations_by_camera[camera]
+                for camera in self.cameras
+            },
+            "confirmed_passages": sum(
+                len(event["observations"]) > 1 for event in self.events
+            ),
+            "unconfirmed_passages": sum(
+                len(event["observations"]) == 1 for event in self.events
+            ),
+            "direction_mismatches": len(self.mismatch_pairs),
+        }
+
+    def finish(self, timestamp):
+        self._expire_events(timestamp, force=True)
+
+    def close(self):
+        if self.diagnostics:
+            self.diagnostics.close()
+            self.diagnostics = None

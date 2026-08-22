@@ -70,7 +70,7 @@ def _reference_telemetry_path(archive_dir):
 def _telemetry_record(timestamp, counter):
     return {
         "mkv_pts_time": timestamp.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-        **counter.snapshot(),
+        **counter.snapshot(timestamp),
     }
 
 
@@ -98,8 +98,13 @@ def main():
     summary_path = run_dir / "summary.json"
     log_path = run_dir / "run.log"
     command_path = run_dir / "command.txt"
+    diagnostics_path = run_dir / "diagnostics.jsonl"
+    evidence_dir = run_dir / "evidence"
     existing = [
-        path for path in (telemetry_path, summary_path, log_path, command_path)
+        path for path in (
+            telemetry_path, summary_path, log_path, command_path,
+            diagnostics_path, evidence_dir,
+        )
         if path.exists()
     ]
     if existing:
@@ -108,13 +113,14 @@ def main():
     if prepare_benchmark_enabled():
         prepare_benchmark()
 
+    run_dir.mkdir(parents=True, exist_ok=True)
     counter = DoorCounter(
         **door_counter_settings(),
         database_path=DATABASE_PATH,
         app_version=__version__,
+        diagnostics_path=diagnostics_path,
+        evidence_dir=evidence_dir,
     )
-
-    run_dir.mkdir(parents=True, exist_ok=True)
     command = shlex.join([
         sys.executable, "-m", "peoplein.run", *sys.argv[1:],
     ])
@@ -195,6 +201,7 @@ def main():
                 max_skew = max(max_skew, skew)
                 clock.advance()
 
+            counter.finish(args.start_time + timedelta(seconds=args.duration))
             row = _telemetry_record(
                 args.start_time + timedelta(seconds=current_second), counter,
             )
@@ -216,7 +223,10 @@ def main():
             "people_inside_confidence": telemetry[-1][
                 "people_inside_confidence"
             ],
+            **counter.diagnostic_summary(),
             "log_file": str(log_path.relative_to(PROJECT_DIR)),
+            "diagnostics_file": str(diagnostics_path.relative_to(PROJECT_DIR)),
+            "evidence_dir": str(evidence_dir.relative_to(PROJECT_DIR)),
             "command": command,
         }
         summary_path.write_text(
@@ -234,6 +244,8 @@ def main():
     except Exception:
         log.exception("run failed")
         raise
+    finally:
+        counter.close()
 
 
 if __name__ == "__main__":
