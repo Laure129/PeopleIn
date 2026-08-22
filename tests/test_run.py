@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from peoplein.config import stream_cameras
-from peoplein.run import analyze_second, people_inside_match_pct
+from peoplein.run import people_inside_match_pct
 from peoplein.stream import _decode_camera
 from peoplein.sync import PlaybackClock
 
@@ -25,17 +25,8 @@ class ArchiveRunTest(unittest.TestCase):
             started + timedelta(milliseconds=333),
         )
 
-    def test_placeholder_analysis_and_accuracy(self):
+    def test_camera_config_and_accuracy(self):
         self.assertEqual(stream_cameras(), ("entrance", "loby"))
-        self.assertEqual(
-            analyze_second({"entrance": [], "loby": []}),
-            {
-                "entered_total": 0,
-                "exited_total": 0,
-                "people_inside": 0,
-                "candidate_total": 0,
-            },
-        )
 
         reference = [
             {"mkv_pts_time": "2026-01-01 00:00:00.000", "people_inside": 0},

@@ -12,9 +12,11 @@ from pathlib import Path
 
 from . import __version__
 from .config import (
-    PROJECT_DIR, archive_dir as configured_archive_dir, frame_interval_ms,
-    prepare_benchmark_enabled, stream_cameras,
+    DATABASE_PATH, PROJECT_DIR, archive_dir as configured_archive_dir,
+    door_counter_settings, frame_interval_ms, prepare_benchmark_enabled,
+    stream_cameras,
 )
+from .counter import DoorCounter
 from .prepare_benchmark import prepare_benchmark
 from .stream import (
     FRAME_HEIGHT, FRAME_WIDTH, FrameStore, build_archive_plan, start_decoders,
@@ -27,17 +29,6 @@ REFERENCE_TELEMETRY = {
 }
 
 log = logging.getLogger(__name__)
-
-
-def analyze_second(frames_by_camera):
-    """Placeholder for one-second entrance/exit analysis."""
-    del frames_by_camera
-    return {
-        "entered_total": 0,
-        "exited_total": 0,
-        "people_inside": 0,
-        "candidate_total": 0,
-    }
 
 
 def people_inside_match_pct(telemetry, reference_path):
@@ -76,10 +67,10 @@ def _reference_telemetry_path(archive_dir):
     return PROJECT_DIR / "resources" / filename
 
 
-def _telemetry_record(timestamp, frames_by_camera):
+def _telemetry_record(timestamp, counter):
     return {
         "mkv_pts_time": timestamp.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-        **analyze_second(frames_by_camera),
+        **counter.snapshot(),
     }
 
 
@@ -116,6 +107,12 @@ def main():
 
     if prepare_benchmark_enabled():
         prepare_benchmark()
+
+    counter = DoorCounter(
+        **door_counter_settings(),
+        database_path=DATABASE_PATH,
+        app_version=__version__,
+    )
 
     run_dir.mkdir(parents=True, exist_ok=True)
     command = shlex.join([
@@ -157,7 +154,6 @@ def main():
         decoded = 0
         max_skew = 0
         current_second = 0
-        frames_by_camera = {camera: [] for camera in cameras}
         telemetry = []
 
         with telemetry_path.open("x", encoding="utf-8") as output:
@@ -167,11 +163,10 @@ def main():
                 if second != current_second:
                     row = _telemetry_record(
                         args.start_time + timedelta(seconds=current_second),
-                        frames_by_camera,
+                        counter,
                     )
                     output.write(json.dumps(row, ensure_ascii=False) + "\n")
                     telemetry.append(row)
-                    frames_by_camera = {camera: [] for camera in cameras}
                     current_second = second
 
                 stats = {}
@@ -188,7 +183,7 @@ def main():
                     frame = store.get(camera, ref["mkv"], ref["frame_index"])
                     if frame.shape != (FRAME_HEIGHT, FRAME_WIDTH, 3):
                         raise RuntimeError(f"unexpected frame shape: {frame.shape}")
-                    frames_by_camera[camera].append(frame)
+                    counter.update(camera, frame, ref["mkv_pts_time"])
                     stats[camera] = {
                         "playback_tick": tick,
                         "mkv_pts_timestamp": ref["mkv_pts_time"].timestamp(),
@@ -200,13 +195,11 @@ def main():
                 max_skew = max(max_skew, skew)
                 clock.advance()
 
-            if any(frames_by_camera.values()):
-                row = _telemetry_record(
-                    args.start_time + timedelta(seconds=current_second),
-                    frames_by_camera,
-                )
-                output.write(json.dumps(row, ensure_ascii=False) + "\n")
-                telemetry.append(row)
+            row = _telemetry_record(
+                args.start_time + timedelta(seconds=current_second), counter,
+            )
+            output.write(json.dumps(row, ensure_ascii=False) + "\n")
+            telemetry.append(row)
 
         for thread in threads:
             thread.join()
@@ -217,6 +210,12 @@ def main():
             "video_duration_seconds": args.duration,
             "processing_time_seconds": processing_time,
             "people_inside_match_pct": accuracy,
+            "entered_total": telemetry[-1]["entered_total"],
+            "exited_total": telemetry[-1]["exited_total"],
+            "people_inside": telemetry[-1]["people_inside"],
+            "people_inside_confidence": telemetry[-1][
+                "people_inside_confidence"
+            ],
             "log_file": str(log_path.relative_to(PROJECT_DIR)),
             "command": command,
         }
@@ -227,9 +226,10 @@ def main():
         log.info(
             "run completed seconds=%d frames=%d ticks=%d max_skew_ms=%d "
             "people_inside_match_pct=%s video_duration_seconds=%d "
-            "processing_time_seconds=%s",
+            "processing_time_seconds=%s people_inside=%d confidence=%s",
             len(telemetry), decoded, clock.tick, max_skew, accuracy,
-            args.duration, processing_time,
+            args.duration, processing_time, telemetry[-1]["people_inside"],
+            telemetry[-1]["people_inside_confidence"],
         )
     except Exception:
         log.exception("run failed")

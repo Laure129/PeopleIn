@@ -2,6 +2,10 @@ debug = true
 prepare_benchmark = true
 archive_dir = "archive_short"
 frame_interval_ms = 333
+person_model = "models/yolov8s-320.onnx"
+person_confidence = 0.35
+door_agreement_seconds = 15
+crossing_margin_px = 10
 
 [cameras.entrance]
 location = "inside"

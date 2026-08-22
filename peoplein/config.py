@@ -70,3 +70,62 @@ def stream_cameras(config_path=CONFIG_PATH):
     if set(selected) != {"entrance", "exit"}:
         raise ValueError("config must define entrance and exit camera views")
     return selected["entrance"], selected["exit"]
+
+
+def door_counter_settings(config_path=CONFIG_PATH):
+    path = Path(config_path)
+    settings = _settings(path)
+    model = settings.get("person_model")
+    confidence = settings.get("person_confidence")
+    agreement = settings.get("door_agreement_seconds")
+    margin = settings.get("crossing_margin_px")
+    if not isinstance(model, str) or not model or Path(model).is_absolute():
+        raise ValueError("config person_model must be a relative path")
+    if ".." in Path(model).parts:
+        raise ValueError("config person_model must stay inside the project")
+    if isinstance(confidence, bool) or not isinstance(confidence, (int, float)) \
+            or not 0 < confidence < 1:
+        raise ValueError("config person_confidence must be between zero and one")
+    if isinstance(agreement, bool) or not isinstance(agreement, (int, float)) \
+            or agreement <= 0:
+        raise ValueError("config door_agreement_seconds must be positive")
+    if isinstance(margin, bool) or not isinstance(margin, (int, float)) \
+            or margin < 0:
+        raise ValueError("config crossing_margin_px must not be negative")
+
+    cameras = settings.get("cameras")
+    result = {}
+    for camera in stream_cameras(path):
+        values = cameras[camera]
+        line = values.get("door_line")
+        if (
+            not isinstance(line, list) or len(line) != 2
+            or any(
+                not isinstance(point, list) or len(point) != 2
+                or any(
+                    isinstance(value, bool)
+                    or not isinstance(value, (int, float))
+                    for value in point
+                )
+                for point in line
+            )
+            or line[0] == line[1]
+        ):
+            raise ValueError(f"config camera {camera} door_line is invalid")
+        directions = {
+            values.get("entry_direction"): "entry",
+            values.get("exit_direction"): "exit",
+        }
+        if set(directions) != {"left_to_right", "right_to_left"}:
+            raise ValueError(f"config camera {camera} directions are invalid")
+        result[camera] = {
+            "line": tuple(tuple(point) for point in line),
+            "directions": directions,
+        }
+    return {
+        "model_path": path.resolve().parent / model,
+        "confidence": float(confidence),
+        "agreement_seconds": float(agreement),
+        "crossing_margin_px": float(margin),
+        "cameras": result,
+    }
