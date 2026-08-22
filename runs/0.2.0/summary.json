@@ -1,0 +1,11 @@
+{
+  "video_duration_seconds": 123,
+  "processing_time_seconds": 50.013,
+  "people_inside_match_pct": 99.186992,
+  "entered_total": 4,
+  "exited_total": 0,
+  "people_inside": 4,
+  "people_inside_confidence": 0.0,
+  "log_file": "runs/0.2.0/run.log",
+  "command": "/home/codex/.cache/uv/builds-v0/.tmpHZ8emC/bin/python -m peoplein.run --start-time 2026-07-13T23:57:01 --duration 123"
+}
