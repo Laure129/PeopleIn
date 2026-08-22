@@ -1,6 +1,6 @@
 {
   "video_duration_seconds": 123,
-  "processing_time_seconds": 51.098,
+  "processing_time_seconds": 50.741,
   "people_inside_match_pct": 99.186992,
   "entered_total": 4,
   "exited_total": 0,
@@ -16,5 +16,5 @@
   "log_file": "runs/0.2.2/run.log",
   "diagnostics_file": "runs/0.2.2/diagnostics.jsonl",
   "evidence_dir": "runs/0.2.2/evidence",
-  "command": "/home/codex/.cache/uv/builds-v0/.tmpKkzFC2/bin/python -m peoplein.run --start-time 2026-07-13T23:57:01 --duration 123"
+  "command": "/home/codex/.cache/uv/builds-v0/.tmpbgxDjt/bin/python -m peoplein.run --start-time 2026-07-13T23:57:01 --duration 123"
 }

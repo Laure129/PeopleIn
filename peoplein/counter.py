@@ -3,7 +3,7 @@
 import json
 import math
 import time
-from collections import Counter
+from collections import Counter, deque
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -95,8 +95,10 @@ class DoorCounter:
         self.observations = []
         self.observations_by_camera = Counter()
         self.mismatch_pairs = set()
-        self.latest_frames = {}
-        self.latest_labels = {}
+        self.frame_history = {
+            camera: deque(maxlen=7) for camera in cameras
+        }
+        self.pending_evidence = []
         self.evidence_dir = Path(evidence_dir) if evidence_dir else None
         if self.evidence_dir:
             self.evidence_dir.mkdir(parents=True, exist_ok=False)
@@ -126,7 +128,6 @@ class DoorCounter:
             (x + width / 2, y + height)
             for (x, y, width, height), _ in detections
         ]
-        self.latest_frames[camera] = (frame.copy(), timestamp)
         self._diagnostic(
             "detection", timestamp, camera,
             inference_ms=inference_ms,
@@ -188,7 +189,7 @@ class DoorCounter:
                 timestamp, camera, track_id, bbox, score, foot, side,
                 None, "new", line,
             )
-        self.latest_labels[camera] = labels
+        self.frame_history[camera].append((frame.copy(), timestamp, labels))
         for track_id in [
             track_id for track_id, track in tracks.items() if track.misses > 5
         ]:
@@ -198,6 +199,7 @@ class DoorCounter:
                 timestamp, camera, direction, track_id, foot,
                 previous_side, side,
             )
+        self._save_ready_evidence()
 
     def _track_diagnostic(
         self, timestamp, camera, track_id, bbox, score, foot, side,
@@ -362,7 +364,8 @@ class DoorCounter:
                 "observations": [observation],
                 "unconfirmed_logged": False,
             })
-        self._save_evidence(observation_id, timestamp)
+        if self.evidence_dir:
+            self.pending_evidence.append((observation_id, timestamp))
 
     def _expire_events(self, timestamp, force=False):
         for event in self.events:
@@ -389,54 +392,88 @@ class DoorCounter:
             )
             event["unconfirmed_logged"] = True
 
-    def _save_evidence(self, observation_id, timestamp):
-        if not self.evidence_dir:
-            return
-        for camera, (frame, frame_time) in self.latest_frames.items():
-            annotated = frame.copy()
-            radius = round(
-                self.cameras[camera].get("door_confidence_radius_px", 0)
-            )
-            if radius:
-                overlay = annotated.copy()
-                cv2.line(
-                    overlay, *self.cameras[camera]["line"],
-                    (0, 165, 255), radius * 2, cv2.LINE_AA,
-                )
-                cv2.addWeighted(overlay, 0.2, annotated, 0.8, 0, annotated)
+    def _save_ready_evidence(self):
+        pending = []
+        for observation_id, timestamp in self.pending_evidence:
+            windows = {
+                camera: self._evidence_window(camera, timestamp)
+                for camera in self.cameras
+            }
+            if any(window is None for window in windows.values()):
+                pending.append((observation_id, timestamp))
+                continue
+            for camera, window in windows.items():
+                for offset, snapshot in zip(range(-3, 4), window):
+                    self._save_evidence_frame(
+                        observation_id, timestamp, camera, offset, snapshot,
+                    )
+        self.pending_evidence = pending
+
+    def _evidence_window(self, camera, timestamp):
+        history = list(self.frame_history[camera])
+        if len(history) < 7:
+            return None
+        center = min(
+            range(len(history)),
+            key=lambda index: abs(
+                (history[index][1] - timestamp).total_seconds()
+            ),
+        )
+        if center < 3 or len(history) - center <= 3:
+            return None
+        return history[center - 3:center + 4]
+
+    def _save_evidence_frame(
+        self, observation_id, timestamp, camera, offset, snapshot,
+    ):
+        frame, frame_time, labels = snapshot
+        annotated = frame.copy()
+        radius = round(
+            self.cameras[camera].get("door_confidence_radius_px", 0)
+        )
+        if radius:
+            overlay = annotated.copy()
             cv2.line(
-                annotated, *self.cameras[camera]["line"],
-                (0, 0, 255), 2, cv2.LINE_AA,
+                overlay, *self.cameras[camera]["line"],
+                (0, 165, 255), radius * 2, cv2.LINE_AA,
             )
-            for track_id, bbox, score, side in self.latest_labels.get(camera, []):
-                x, y, width, height = map(int, bbox)
-                cv2.rectangle(
-                    annotated, (x, y), (x + width, y + height), (0, 255, 0), 2,
-                )
-                cv2.circle(
-                    annotated, (x + width // 2, y + height), 4, (255, 0, 0), -1,
-                )
-                cv2.putText(
-                    annotated,
-                    f"track={track_id} conf={score:.2f} {self._side_name(side)}",
-                    (x, max(15, y - 5)), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.45, (0, 255, 0), 1, cv2.LINE_AA,
-                )
-            cv2.putText(
-                annotated,
-                f"passage={observation_id} event={self._timestamp(timestamp)}",
-                (8, 18), cv2.FONT_HERSHEY_SIMPLEX,
-                0.45, (255, 255, 255), 1, cv2.LINE_AA,
+            cv2.addWeighted(overlay, 0.2, annotated, 0.8, 0, annotated)
+        cv2.line(
+            annotated, *self.cameras[camera]["line"],
+            (0, 0, 255), 2, cv2.LINE_AA,
+        )
+        for track_id, bbox, score, side in labels:
+            x, y, width, height = map(int, bbox)
+            cv2.rectangle(
+                annotated, (x, y), (x + width, y + height), (0, 255, 0), 2,
+            )
+            cv2.circle(
+                annotated, (x + width // 2, y + height), 4, (255, 0, 0), -1,
             )
             cv2.putText(
                 annotated,
-                f"camera={camera} frame={self._timestamp(frame_time)}",
-                (8, 36), cv2.FONT_HERSHEY_SIMPLEX,
-                0.45, (255, 255, 255), 1, cv2.LINE_AA,
+                f"track={track_id} conf={score:.2f} {self._side_name(side)}",
+                (x, max(15, y - 5)), cv2.FONT_HERSHEY_SIMPLEX,
+                0.45, (0, 255, 0), 1, cv2.LINE_AA,
             )
-            target = self.evidence_dir / f"passage_{observation_id}_{camera}.jpg"
-            if not cv2.imwrite(str(target), annotated):
-                raise RuntimeError(f"cannot write evidence image: {target}")
+        cv2.putText(
+            annotated,
+            f"passage={observation_id} frame={offset:+d} "
+            f"event={self._timestamp(timestamp)}",
+            (8, 18), cv2.FONT_HERSHEY_SIMPLEX,
+            0.45, (255, 255, 255), 1, cv2.LINE_AA,
+        )
+        cv2.putText(
+            annotated,
+            f"camera={camera} frame={self._timestamp(frame_time)}",
+            (8, 36), cv2.FONT_HERSHEY_SIMPLEX,
+            0.45, (255, 255, 255), 1, cv2.LINE_AA,
+        )
+        target = self.evidence_dir / (
+            f"passage_{observation_id}_{camera}_frame_{offset:+d}.jpg"
+        )
+        if not cv2.imwrite(str(target), annotated):
+            raise RuntimeError(f"cannot write evidence image: {target}")
 
     def _diagnostic(self, event, timestamp, camera=None, **values):
         if not self.diagnostics:

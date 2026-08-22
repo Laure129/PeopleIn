@@ -27,6 +27,54 @@ class ScoredDetector:
 
 
 class DoorCounterTest(unittest.TestCase):
+    def test_evidence_has_three_frames_before_and_after_for_each_camera(self):
+        directions = {
+            "left_to_right": "entry",
+            "right_to_left": "exit",
+        }
+        cameras = {
+            camera: {
+                "line": ((0, 0), (0, 20)),
+                "directions": directions,
+            }
+            for camera in ("entrance", "loby")
+        }
+        boxes = []
+        for tick in range(7):
+            boxes.extend((
+                [(-12 if tick < 3 else 8, 0, 4, 10)],
+                [],
+            ))
+        frame = np.zeros((20, 20, 3), dtype=np.uint8)
+        started = datetime(2026, 1, 2)
+
+        with tempfile.TemporaryDirectory() as directory:
+            evidence = Path(directory) / "evidence"
+            counter = DoorCounter(
+                cameras=cameras,
+                model_path="unused",
+                confidence=0.35,
+                agreement_seconds=15,
+                crossing_margin_px=1,
+                database_path=Path(directory) / "people.sqlite3",
+                app_version="test",
+                detector=FakeDetector(boxes),
+                evidence_dir=evidence,
+            )
+            for tick in range(7):
+                timestamp = started + timedelta(seconds=tick)
+                for camera in cameras:
+                    counter.update(camera, frame, timestamp)
+
+            self.assertEqual(
+                {path.name for path in evidence.iterdir()},
+                {
+                    f"passage_1_{camera}_frame_{offset:+d}.jpg"
+                    for camera in cameras
+                    for offset in range(-3, 4)
+                },
+            )
+
     def test_low_confidence_is_limited_to_loby_door_zone(self):
         directions = {
             "left_to_right": "entry",
@@ -90,7 +138,6 @@ class DoorCounterTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             database = Path(directory) / "people.sqlite3"
             diagnostics = Path(directory) / "diagnostics.jsonl"
-            evidence = Path(directory) / "evidence"
             counter = DoorCounter(
                 cameras=cameras,
                 model_path="unused",
@@ -101,7 +148,6 @@ class DoorCounterTest(unittest.TestCase):
                 app_version="0.2.1",
                 detector=FakeDetector(boxes),
                 diagnostics_path=diagnostics,
-                evidence_dir=evidence,
             )
             counter.update("entrance", frame, started)
             counter.update("entrance", frame, started + timedelta(seconds=1))
@@ -151,7 +197,6 @@ class DoorCounterTest(unittest.TestCase):
                 "detection", "track_update", "line_crossing",
                 "passage_unconfirmed", "passage_agreement",
             }.issubset(events))
-            self.assertTrue((evidence / "passage_1_entrance.jpg").is_file())
             self.assertEqual(counter.diagnostic_summary(), {
                 "observations_by_camera": {"entrance": 2, "loby": 2},
                 "confirmed_passages": 2,
