@@ -13,8 +13,8 @@ from pathlib import Path
 from . import __version__
 from .config import (
     DATABASE_PATH, PROJECT_DIR, archive_dir as configured_archive_dir,
-    door_counter_settings, frame_interval_ms, prepare_benchmark_enabled,
-    stream_cameras,
+    debug_mode, door_counter_settings, frame_interval_ms,
+    prepare_benchmark_enabled, stream_cameras,
 )
 from .counter import DoorCounter
 from .prepare_benchmark import prepare_benchmark
@@ -112,6 +112,8 @@ def main():
 
     if prepare_benchmark_enabled():
         prepare_benchmark()
+    if debug_mode():
+        DATABASE_PATH.unlink(missing_ok=True)
 
     run_dir.mkdir(parents=True, exist_ok=True)
     counter = DoorCounter(
