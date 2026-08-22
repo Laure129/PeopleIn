@@ -93,11 +93,13 @@ class DoorCounterTest(unittest.TestCase):
             [((0, 0, 4, 10), 0.2)],
             [((18, 0, 4, 10), 0.2)],
             [((0, 0, 4, 10), 0.2)],
+            [((0, 0, 4, 10), 0.02)],
         ])
         frame = np.zeros((20, 30, 3), dtype=np.uint8)
         started = datetime(2026, 1, 2)
 
         with tempfile.TemporaryDirectory() as directory:
+            diagnostics = Path(directory) / "diagnostics.jsonl"
             counter = DoorCounter(
                 cameras=cameras,
                 model_path="unused",
@@ -107,13 +109,19 @@ class DoorCounterTest(unittest.TestCase):
                 database_path=Path(directory) / "people.sqlite3",
                 app_version="test",
                 detector=detector,
+                diagnostics_path=diagnostics,
             )
             counter.update("loby", frame, started)
             counter.update("loby", frame, started + timedelta(seconds=1))
             counter.update("entrance", frame, started + timedelta(seconds=2))
+            counter.update("entrance", frame, started + timedelta(seconds=3))
 
             self.assertEqual(len(counter.tracks["loby"]), 1)
             self.assertEqual(len(counter.tracks["entrance"]), 0)
+            counter.close()
+            detection = json.loads(diagnostics.read_text().splitlines()[-1])
+            self.assertEqual(detection["detection_count"], 1)
+            self.assertEqual(detection["detections"][0]["confidence"], 0.02)
 
     def test_both_cameras_record_and_confirm_entry_and_exit(self):
         cameras = {

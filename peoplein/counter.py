@@ -13,6 +13,8 @@ import numpy as np
 
 from .database import record_passage
 
+DIAGNOSTIC_CONFIDENCE = 0.01
+
 
 class PersonDetector:
     def __init__(self, model_path, confidence):
@@ -77,14 +79,9 @@ class DoorCounter:
     ):
         self.cameras = cameras
         self.confidence = confidence
-        detector_confidence = min(
-            [confidence]
-            + [
-                camera.get("door_confidence", confidence)
-                for camera in cameras.values()
-            ]
+        self.detector = detector or PersonDetector(
+            model_path, DIAGNOSTIC_CONFIDENCE,
         )
-        self.detector = detector or PersonDetector(model_path, detector_confidence)
         self.agreement_seconds = agreement_seconds
         self.crossing_margin_px = crossing_margin_px
         self.database_path = database_path
@@ -113,16 +110,19 @@ class DoorCounter:
         geometry = self.cameras[camera]
         line = geometry["line"]
         started = time.monotonic()
-        detections = [
-            (bbox, score)
-            for bbox, score in self.detector(frame)
-            if score >= self.confidence or (
+        raw_detections = [
+            (bbox, score) for bbox, score in self.detector(frame)
+            if score >= DIAGNOSTIC_CONFIDENCE
+        ]
+        detections, diagnostic_only = [], []
+        for bbox, score in raw_detections:
+            target = detections if score >= self.confidence or (
                 score >= geometry.get("door_confidence", self.confidence)
                 and self._distance_to_segment(
                     (bbox[0] + bbox[2] / 2, bbox[1] + bbox[3]), line,
                 ) <= geometry.get("door_confidence_radius_px", 0)
-            )
-        ]
+            ) else diagnostic_only
+            target.append((bbox, score))
         inference_ms = round((time.monotonic() - started) * 1000, 3)
         feet = [
             (x + width / 2, y + height)
@@ -131,13 +131,13 @@ class DoorCounter:
         self._diagnostic(
             "detection", timestamp, camera,
             inference_ms=inference_ms,
-            detection_count=len(detections),
+            detection_count=len(raw_detections),
             detections=[
                 {
                     "bbox": list(map(int, bbox)),
                     "confidence": round(float(score), 6),
                 }
-                for bbox, score in detections
+                for bbox, score in raw_detections
             ],
         )
 
@@ -189,6 +189,9 @@ class DoorCounter:
                 timestamp, camera, track_id, bbox, score, foot, side,
                 None, "new", line,
             )
+        labels.extend(
+            (None, bbox, score, None) for bbox, score in diagnostic_only
+        )
         self.frame_history[camera].append((frame.copy(), timestamp, labels))
         for track_id in [
             track_id for track_id, track in tracks.items() if track.misses > 5
@@ -444,17 +447,25 @@ class DoorCounter:
         )
         for track_id, bbox, score, side in labels:
             x, y, width, height = map(int, bbox)
+            color = (
+                (0, 255, 0) if score >= self.confidence else (0, 165, 255)
+            )
             cv2.rectangle(
-                annotated, (x, y), (x + width, y + height), (0, 255, 0), 2,
+                annotated, (x, y), (x + width, y + height), color, 2,
             )
-            cv2.circle(
-                annotated, (x + width // 2, y + height), 4, (255, 0, 0), -1,
-            )
+            if track_id is not None:
+                cv2.circle(
+                    annotated, (x + width // 2, y + height),
+                    4, (255, 0, 0), -1,
+                )
             cv2.putText(
                 annotated,
-                f"track={track_id} conf={score:.2f} {self._side_name(side)}",
+                (
+                    f"track={track_id} conf={score:.2f} {self._side_name(side)}"
+                    if track_id is not None else f"conf={score:.2f} diagnostic"
+                ),
                 (x, max(15, y - 5)), cv2.FONT_HERSHEY_SIMPLEX,
-                0.45, (0, 255, 0), 1, cv2.LINE_AA,
+                0.45, color, 1, cv2.LINE_AA,
             )
         cv2.putText(
             annotated,
