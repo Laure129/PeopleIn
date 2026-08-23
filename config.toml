@@ -3,7 +3,7 @@ prepare_benchmark = true
 archive_dir = "archive_short"
 frame_interval_ms = 333
 person_model = "models/person-detection-0202.xml"
-person_confidence = 0.35
+person_confidence = 0.75
 door_agreement_seconds = 15
 crossing_margin_px = 10
 
