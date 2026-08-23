@@ -1,0 +1,54 @@
+{
+  "video_duration_seconds": 123,
+  "processing_time_seconds": 32.391,
+  "people_inside_match_pct": 99.186992,
+  "entered_total": 4,
+  "exited_total": 0,
+  "people_inside": 4,
+  "people_inside_confidence": 1.0,
+  "observations_by_camera": {
+    "entrance": 4,
+    "loby": 10
+  },
+  "confirmed_passages": 4,
+  "unconfirmed_passages": 0,
+  "direction_mismatches": 0,
+  "passages": [
+    {
+      "timestamp": "2026-07-13 23:57:20.320",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmed": true,
+      "motion_timestamp": "2026-07-13 23:57:24.640",
+      "motion_delta_seconds": 4.32
+    },
+    {
+      "timestamp": "2026-07-13 23:58:01.280",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmed": true,
+      "motion_timestamp": "2026-07-13 23:58:01.920",
+      "motion_delta_seconds": 0.64
+    },
+    {
+      "timestamp": "2026-07-13 23:58:56.880",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmed": true,
+      "motion_timestamp": "2026-07-13 23:58:57.880",
+      "motion_delta_seconds": 1.0
+    },
+    {
+      "timestamp": "2026-07-13 23:58:58.560",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmed": true,
+      "motion_timestamp": "2026-07-13 23:58:58.880",
+      "motion_delta_seconds": 0.32
+    }
+  ],
+  "log_file": "runs/0.3.1-yolov8s-320/run.log",
+  "diagnostics_file": "runs/0.3.1-yolov8s-320/diagnostics.jsonl",
+  "evidence_dir": "runs/0.3.1-yolov8s-320/evidence",
+  "command": "/usr/local/bin/python -m peoplein.run --start-time 2026-07-13T23:57:01 --duration 123"
+}

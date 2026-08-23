@@ -5,6 +5,7 @@ import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import cv2
 import numpy as np
 
 from peoplein.counter import DoorCounter
@@ -134,33 +135,40 @@ class DoorCounterTest(unittest.TestCase):
     def test_motion_only_confirms_entrance_passage(self):
         cameras = {
             "entrance": {
-                "line": ((0, 0), (0, 40)),
+                "line": ((0, 0), (0, 80)),
                 "directions": {
                     "left_to_right": "entry",
                     "right_to_left": "exit",
                 },
             },
             "loby": {
-                "line": ((30, 0), (30, 40)),
+                "line": ((30, 0), (30, 80)),
                 "directions": {
                     "right_to_left": "entry",
                     "left_to_right": "exit",
                 },
-                "motion_roi": ((0, 0), (59, 39)),
+                "motion_roi": ((0, 0), (99, 79)),
                 "motion_min_area": 50,
             },
         }
         started = datetime(2026, 1, 2, 3, 4, 5)
-        frame = np.zeros((40, 60, 3), dtype=np.uint8)
+        frame = np.zeros((80, 100, 3), dtype=np.uint8)
         masks = []
-        for left in (40, 10):
+        detections = []
+        for tick in range(7):
+            left = 40 if tick < 3 else 10
             mask = np.zeros(frame.shape[:2], dtype=np.uint8)
-            mask[10:25, left:left + 10] = 255
+            mask[45:60, left:left + 10] = 255
             masks.append(mask)
+            detections.append([
+                ((-12 if tick < 3 else 8, 0, 4, 10), 0.9),
+                ((70, 60, 10, 10), 0.02),
+            ])
 
         with tempfile.TemporaryDirectory() as directory:
             database = Path(directory) / "people.sqlite3"
             diagnostics = Path(directory) / "diagnostics.jsonl"
+            evidence = Path(directory) / "evidence"
             counter = DoorCounter(
                 cameras=cameras,
                 model_path="unused",
@@ -169,17 +177,15 @@ class DoorCounterTest(unittest.TestCase):
                 crossing_margin_px=1,
                 database_path=database,
                 app_version="0.2.1",
-                detector=FakeDetector([
-                    [(-12, 0, 4, 10)], [(8, 0, 4, 10)],
-                ]),
+                detector=ScoredDetector(detections),
                 diagnostics_path=diagnostics,
+                evidence_dir=evidence,
             )
             counter.motion["loby"]["subtractor"] = FakeSubtractor(masks)
-            counter.update("loby", frame, started)
-            counter.update("loby", frame, started + timedelta(seconds=1))
-            self.assertEqual(counter.snapshot()["entered_total"], 0)
-            counter.update("entrance", frame, started + timedelta(seconds=2))
-            counter.update("entrance", frame, started + timedelta(seconds=3))
+            for tick in range(7):
+                timestamp = started + timedelta(seconds=tick)
+                for camera in cameras:
+                    counter.update(camera, frame, timestamp)
             counter.finish(started + timedelta(seconds=20))
             self.assertEqual(counter.snapshot(), {
                 "entered_total": 1,
@@ -187,6 +193,20 @@ class DoorCounterTest(unittest.TestCase):
                 "people_inside": 1,
                 "people_inside_confidence": 1.0,
             })
+            self.assertEqual(
+                {path.name for path in evidence.iterdir()},
+                {
+                    f"passage_1_{camera}_frame_{offset:+d}.jpg"
+                    for camera in cameras for offset in range(-3, 4)
+                } | {
+                    f"motion_2_loby_frame_{offset:+d}.jpg"
+                    for offset in range(-3, 4)
+                },
+            )
+            image = cv2.imread(str(
+                evidence / "passage_1_entrance_frame_+0.jpg"
+            ))
+            self.assertLess(int(image[60, 70].max()), 80)
 
             counter.close()
             with sqlite3.connect(database) as connection:
@@ -214,6 +234,14 @@ class DoorCounterTest(unittest.TestCase):
                 "confirmed_passages": 1,
                 "unconfirmed_passages": 0,
                 "direction_mismatches": 0,
+                "passages": [{
+                    "timestamp": "2026-01-02 03:04:08.000",
+                    "direction": "entry",
+                    "camera": "entrance",
+                    "confirmed": True,
+                    "motion_timestamp": "2026-01-02 03:04:08.000",
+                    "motion_delta_seconds": 0.0,
+                }],
             })
 
 

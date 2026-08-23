@@ -174,7 +174,6 @@ class DoorCounter:
             detections, points, foreground_area = self._motion_detections(
                 camera, frame,
             )
-            diagnostic_only = []
             inference_ms = round((time.monotonic() - started) * 1000, 3)
             self._diagnostic(
                 "motion_detection", timestamp, camera,
@@ -194,15 +193,15 @@ class DoorCounter:
                 (bbox, score) for bbox, score in self.detector(frame)
                 if score >= DIAGNOSTIC_CONFIDENCE
             ]
-            detections, diagnostic_only = [], []
+            detections = []
             for bbox, score in raw_detections:
-                target = detections if score >= self.confidence or (
+                if score >= self.confidence or (
                     score >= geometry.get("door_confidence", self.confidence)
                     and self._distance_to_segment(
                         (bbox[0] + bbox[2] / 2, bbox[1] + bbox[3]), line,
                     ) <= geometry.get("door_confidence_radius_px", 0)
-                ) else diagnostic_only
-                target.append((bbox, score))
+                ):
+                    detections.append((bbox, score))
             inference_ms = round((time.monotonic() - started) * 1000, 3)
             points = [
                 (x + width / 2, y + height)
@@ -279,10 +278,6 @@ class DoorCounter:
                 timestamp, camera, track_id, bbox, score, point, side,
                 None, "new", line,
             )
-        labels.extend(
-            (None, bbox, score, None, None)
-            for bbox, score in diagnostic_only
-        )
         self.frame_history[camera].append((frame.copy(), timestamp, labels))
         for track_id in [
             track_id for track_id, track in tracks.items()
@@ -427,6 +422,10 @@ class DoorCounter:
                 previous_side=self._side_name(previous_side),
                 side=self._side_name(side),
             )
+            if self.evidence_dir:
+                self.pending_evidence.append((
+                    "motion", track_id, timestamp, (camera,),
+                ))
             self._match_motion(timestamp)
             return
 
@@ -459,7 +458,9 @@ class DoorCounter:
         })
         self._match_motion(timestamp)
         if self.evidence_dir:
-            self.pending_evidence.append((observation_id, timestamp))
+            self.pending_evidence.append((
+                "passage", observation_id, timestamp, tuple(self.cameras),
+            ))
 
     def _match_motion(self, timestamp, force=False):
         pairs = sorted(
@@ -491,6 +492,7 @@ class DoorCounter:
             if not force and age <= self.agreement_seconds:
                 continue
             event["confirmed"] = True
+            event["motion_candidate"] = candidate
             candidate["matched"] = True
             observation = event["observations"][0]
             self._diagnostic(
@@ -549,18 +551,18 @@ class DoorCounter:
 
     def _save_ready_evidence(self):
         pending = []
-        for observation_id, timestamp in self.pending_evidence:
+        for kind, event_id, timestamp, cameras in self.pending_evidence:
             windows = {
                 camera: self._evidence_window(camera, timestamp)
-                for camera in self.cameras
+                for camera in cameras
             }
             if any(window is None for window in windows.values()):
-                pending.append((observation_id, timestamp))
+                pending.append((kind, event_id, timestamp, cameras))
                 continue
             for camera, window in windows.items():
                 for offset, snapshot in zip(range(-3, 4), window):
                     self._save_evidence_frame(
-                        observation_id, timestamp, camera, offset, snapshot,
+                        kind, event_id, timestamp, camera, offset, snapshot,
                     )
         self.pending_evidence = pending
 
@@ -579,7 +581,7 @@ class DoorCounter:
         return history[center - 3:center + 4]
 
     def _save_evidence_frame(
-        self, observation_id, timestamp, camera, offset, snapshot,
+        self, kind, event_id, timestamp, camera, offset, snapshot,
     ):
         frame, frame_time, labels = snapshot
         annotated = frame.copy()
@@ -598,10 +600,10 @@ class DoorCounter:
             (0, 0, 255), 2, cv2.LINE_AA,
         )
         for track_id, bbox, score, side, point in labels:
+            if score < self.confidence:
+                continue
             x, y, width, height = map(int, bbox)
-            color = (
-                (0, 255, 0) if score >= self.confidence else (0, 165, 255)
-            )
+            color = (0, 255, 0)
             cv2.rectangle(
                 annotated, (x, y), (x + width, y + height), color, 2,
             )
@@ -621,7 +623,7 @@ class DoorCounter:
             )
         cv2.putText(
             annotated,
-            f"passage={observation_id} frame={offset:+d} "
+            f"{kind}={event_id} frame={offset:+d} "
             f"event={self._timestamp(timestamp)}",
             (8, 18), cv2.FONT_HERSHEY_SIMPLEX,
             0.45, (255, 255, 255), 1, cv2.LINE_AA,
@@ -633,7 +635,7 @@ class DoorCounter:
             0.45, (255, 255, 255), 1, cv2.LINE_AA,
         )
         target = self.evidence_dir / (
-            f"passage_{observation_id}_{camera}_frame_{offset:+d}.jpg"
+            f"{kind}_{event_id}_{camera}_frame_{offset:+d}.jpg"
         )
         if not cv2.imwrite(str(target), annotated):
             raise RuntimeError(f"cannot write evidence image: {target}")
@@ -684,6 +686,27 @@ class DoorCounter:
                 not event["confirmed"] for event in self.events
             ),
             "direction_mismatches": len(self.mismatch_pairs),
+            "passages": [
+                self._passage_summary(event) for event in self.events
+            ],
+        }
+
+    def _passage_summary(self, event):
+        observation = event["observations"][0]
+        motion = event.get("motion_candidate")
+        return {
+            "timestamp": self._timestamp(observation["timestamp"]),
+            "direction": event["direction"],
+            "camera": observation["camera"],
+            "confirmed": event["confirmed"],
+            "motion_timestamp": (
+                self._timestamp(motion["timestamp"]) if motion else None
+            ),
+            "motion_delta_seconds": (
+                round(abs((observation["timestamp"] - motion["timestamp"])
+                          .total_seconds()), 3)
+                if motion else None
+            ),
         }
 
     def finish(self, timestamp):

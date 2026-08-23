@@ -32,7 +32,7 @@ location = "inside"
 [cameras.loby]
 location = "outside"
 view = "exit"
-door_line = [[315, 120], [340, 355]]
+door_line = [[255, 120], [280, 355]]
 entry_direction = "right_to_left"
 exit_direction = "left_to_right"
 motion_roi = [[170, 90], [485, 359]]
