@@ -124,6 +124,55 @@ class DoorCounterTest(unittest.TestCase):
             self.assertEqual(detection["detection_count"], 1)
             self.assertEqual(detection["detections"][0]["confidence"], 0.02)
 
+    def test_motion_axis_detects_person_but_not_door(self):
+        cameras = {
+            "loby": {
+                "line": ((30, 0), (30, 80)),
+                "directions": {
+                    "right_to_left": "entry",
+                    "left_to_right": "exit",
+                },
+                "motion_roi": ((0, 0), (99, 79)),
+                "motion_band_width_px": 40,
+                "motion_min_points": 2,
+                "motion_min_displacement_px": 10,
+            },
+        }
+        counter = DoorCounter(
+            cameras=cameras,
+            model_path="unused",
+            confidence=0.35,
+            agreement_seconds=15,
+            crossing_margin_px=1,
+            database_path="unused",
+            app_version="test",
+            detector=FakeDetector([]),
+        )
+        texture = np.repeat(
+            np.random.default_rng(1).integers(
+                0, 256, (30, 30, 1), dtype=np.uint8,
+            ),
+            3,
+            axis=2,
+        )
+
+        door = np.zeros((80, 100, 3), dtype=np.uint8)
+        door[25:55, 40:70] = texture
+        counter._motion_flow("loby", door)
+        door = np.zeros_like(door)
+        door[25:55, 15:45] = texture
+        _, axis_points, _ = counter._motion_flow("loby", door)
+        self.assertEqual(axis_points, 0)
+
+        counter.motion["loby"]["previous_gray"] = None
+        person = np.zeros_like(door)
+        person[10:40, 15:45] = texture
+        counter._motion_flow("loby", person)
+        person = np.zeros_like(door)
+        person[40:70, 15:45] = texture
+        _, axis_points, _ = counter._motion_flow("loby", person)
+        self.assertGreaterEqual(axis_points, 2)
+
     def test_motion_only_confirms_entrance_passage(self):
         cameras = {
             "entrance": {
@@ -142,6 +191,7 @@ class DoorCounterTest(unittest.TestCase):
                 "motion_roi": ((0, 0), (99, 79)),
                 "motion_band_width_px": 40,
                 "motion_min_points": 2,
+                "motion_min_displacement_px": 30,
             },
         }
         started = datetime(2026, 1, 2, 3, 4, 5)

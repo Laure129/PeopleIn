@@ -160,22 +160,29 @@ class DoorCounter:
         line = geometry["line"]
         started = time.monotonic()
         if camera in self.motion:
-            direction_points, flow_vectors = self._motion_flow(camera, frame)
+            direction_points, axis_points, flow_vectors = self._motion_flow(
+                camera, frame,
+            )
             inference_ms = round((time.monotonic() - started) * 1000, 3)
             self._diagnostic(
                 "motion_flow", timestamp, camera,
                 inference_ms=inference_ms,
                 point_count=sum(direction_points.values()),
                 direction_points=dict(direction_points),
+                axis_points=axis_points,
             )
             self.frame_history[camera].append((
                 frame.copy(), timestamp, flow_vectors,
             ))
-            if sum(direction_points.values()) >= geometry["motion_min_points"]:
+            if (
+                sum(direction_points.values()) >= geometry["motion_min_points"]
+                or axis_points >= geometry["motion_min_points"]
+            ):
                 self.motion_activity.append({
                     "timestamp": timestamp,
                     "camera": camera,
                     "direction_points": dict(direction_points),
+                    "axis_points": axis_points,
                 })
                 self._match_motion(timestamp)
             self._save_ready_evidence()
@@ -283,7 +290,7 @@ class DoorCounter:
         previous = state["previous_gray"]
         state["previous_gray"] = gray
         if previous is None:
-            return Counter(), []
+            return Counter(), 0, []
         if state["mask"] is None:
             roi = np.zeros(gray.shape, dtype=np.uint8)
             band = np.zeros_like(roi)
@@ -298,7 +305,7 @@ class DoorCounter:
             qualityLevel=0.01, minDistance=4, blockSize=5,
         )
         if points is None:
-            return Counter(), []
+            return Counter(), 0, []
         current, status, _ = cv2.calcOpticalFlowPyrLK(
             previous, gray, points, None, winSize=(21, 21), maxLevel=3,
             criteria=(
@@ -306,7 +313,7 @@ class DoorCounter:
             ),
         )
         if current is None or status is None:
-            return Counter(), []
+            return Counter(), 0, []
         backward, backward_status, _ = cv2.calcOpticalFlowPyrLK(
             gray, previous, current, None, winSize=(21, 21), maxLevel=3,
             criteria=(
@@ -314,18 +321,33 @@ class DoorCounter:
             ),
         )
         if backward is None or backward_status is None:
-            return Counter(), []
+            return Counter(), 0, []
         result = Counter()
+        axis_points = 0
         vectors = []
+        (x1, y1), (x2, y2) = geometry["line"]
+        line_length = math.hypot(x2 - x1, y2 - y1)
+        line_unit = ((x2 - x1) / line_length, (y2 - y1) / line_length)
         for start, end, returned, ok, backward_ok in zip(
             points.reshape(-1, 2), current.reshape(-1, 2),
             backward.reshape(-1, 2), status.ravel(), backward_status.ravel(),
         ):
             if not ok or not backward_ok or math.dist(start, returned) > 1.5:
                 continue
+            projection = (
+                (end[0] - start[0]) * line_unit[0]
+                + (end[1] - start[1]) * line_unit[1]
+            )
+            along_axis = (
+                abs(projection) >= geometry["motion_min_displacement_px"]
+            )
+            if along_axis:
+                axis_points += 1
             start_side = self._side(start, geometry["line"], MOTION_MARGIN_PX)
             end_side = self._side(end, geometry["line"], MOTION_MARGIN_PX)
             if not start_side or not end_side or start_side == end_side:
+                if along_axis:
+                    vectors.append((start, end, "axis"))
                 continue
             direction = (
                 "left_to_right" if (start_side, end_side) == (-1, 1)
@@ -334,7 +356,7 @@ class DoorCounter:
             direction = geometry["directions"][direction]
             result[direction] += 1
             vectors.append((start, end, direction))
-        return result, vectors
+        return result, axis_points, vectors
 
     def _track_diagnostic(
         self, timestamp, camera, track_id, bbox, score, foot, side,
@@ -493,6 +515,7 @@ class DoorCounter:
                 direction=event["direction"],
                 delta_seconds=round(delta, 3),
                 motion_direction_points=candidate["direction_points"],
+                motion_axis_points=candidate["axis_points"],
             )
 
     def _expire_events(self, timestamp, force=False):
@@ -566,7 +589,11 @@ class DoorCounter:
         )
         if camera in self.motion:
             for start, end, direction in labels:
-                color = (0, 255, 0) if direction == "entry" else (0, 165, 255)
+                color = {
+                    "entry": (0, 255, 0),
+                    "exit": (0, 165, 255),
+                    "axis": (255, 255, 0),
+                }[direction]
                 start, end = tuple(map(round, start)), tuple(map(round, end))
                 cv2.arrowedLine(
                     annotated, start, end, color, 2, cv2.LINE_AA,
