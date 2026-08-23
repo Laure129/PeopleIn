@@ -27,14 +27,6 @@ class ScoredDetector:
         return next(self.detections)
 
 
-class FakeSubtractor:
-    def __init__(self, masks):
-        self.masks = iter(masks)
-
-    def apply(self, _frame, learningRate):
-        return next(self.masks)
-
-
 class DoorCounterTest(unittest.TestCase):
     def test_evidence_has_three_frames_before_and_after_for_each_camera(self):
         directions = {
@@ -148,18 +140,22 @@ class DoorCounterTest(unittest.TestCase):
                     "left_to_right": "exit",
                 },
                 "motion_roi": ((0, 0), (99, 79)),
-                "motion_min_area": 50,
+                "motion_band_width_px": 40,
+                "motion_min_points": 2,
             },
         }
         started = datetime(2026, 1, 2, 3, 4, 5)
-        frame = np.zeros((80, 100, 3), dtype=np.uint8)
-        masks = []
+        entrance_frame = np.zeros((80, 100, 3), dtype=np.uint8)
+        motion_frames = []
+        texture = np.random.default_rng(1).integers(
+            0, 256, (30, 30, 3), dtype=np.uint8,
+        )
         detections = []
         for tick in range(7):
-            left = 40 if tick < 3 else 10
-            mask = np.zeros(frame.shape[:2], dtype=np.uint8)
-            mask[45:60, left:left + 10] = 255
-            masks.append(mask)
+            left = 40 if tick < 3 else 15
+            frame = np.zeros_like(entrance_frame)
+            frame[30:60, left:left + 30] = texture
+            motion_frames.append(frame)
             detections.append([
                 ((-12 if tick < 3 else 8, 0, 4, 10), 0.9),
                 ((70, 60, 10, 10), 0.02),
@@ -181,11 +177,10 @@ class DoorCounterTest(unittest.TestCase):
                 diagnostics_path=diagnostics,
                 evidence_dir=evidence,
             )
-            counter.motion["loby"]["subtractor"] = FakeSubtractor(masks)
             for tick in range(7):
                 timestamp = started + timedelta(seconds=tick)
-                for camera in cameras:
-                    counter.update(camera, frame, timestamp)
+                counter.update("entrance", entrance_frame, timestamp)
+                counter.update("loby", motion_frames[tick], timestamp)
             counter.finish(started + timedelta(seconds=20))
             self.assertEqual(counter.snapshot(), {
                 "entered_total": 1,
@@ -198,9 +193,6 @@ class DoorCounterTest(unittest.TestCase):
                 {
                     f"passage_1_{camera}_frame_{offset:+d}.jpg"
                     for camera in cameras for offset in range(-3, 4)
-                } | {
-                    f"motion_2_loby_frame_{offset:+d}.jpg"
-                    for offset in range(-3, 4)
                 },
             )
             image = cv2.imread(str(
@@ -225,15 +217,13 @@ class DoorCounterTest(unittest.TestCase):
                 )
             }
             self.assertTrue({
-                "motion_detection", "motion_track_update", "motion_crossing",
-                "detection", "track_update", "line_crossing",
-                "passage_agreement",
+                "motion_flow", "detection", "track_update",
+                "line_crossing", "passage_agreement",
             }.issubset(events))
             self.assertEqual(counter.diagnostic_summary(), {
-                "observations_by_camera": {"entrance": 1, "loby": 1},
+                "observations_by_camera": {"entrance": 1, "loby": 0},
                 "confirmed_passages": 1,
                 "unconfirmed_passages": 0,
-                "direction_mismatches": 0,
                 "passages": [{
                     "timestamp": "2026-01-02 03:04:08.000",
                     "direction": "entry",
