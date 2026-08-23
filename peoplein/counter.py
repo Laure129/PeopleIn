@@ -14,7 +14,7 @@ import numpy as np
 from .database import record_passage
 
 DIAGNOSTIC_CONFIDENCE = 0.01
-MOTION_MARGIN_PX = 5
+MOTION_ACTIVITY_GAP_SECONDS = 3
 
 
 class PersonDetector:
@@ -160,29 +160,21 @@ class DoorCounter:
         line = geometry["line"]
         started = time.monotonic()
         if camera in self.motion:
-            direction_points, axis_points, flow_vectors = self._motion_flow(
-                camera, frame,
-            )
+            motion_points, flow_vectors = self._motion_flow(camera, frame)
             inference_ms = round((time.monotonic() - started) * 1000, 3)
             self._diagnostic(
                 "motion_flow", timestamp, camera,
                 inference_ms=inference_ms,
-                point_count=sum(direction_points.values()),
-                direction_points=dict(direction_points),
-                axis_points=axis_points,
+                motion_points=motion_points,
             )
             self.frame_history[camera].append((
                 frame.copy(), timestamp, flow_vectors,
             ))
-            if (
-                sum(direction_points.values()) >= geometry["motion_min_points"]
-                or axis_points >= geometry["motion_min_points"]
-            ):
+            if motion_points >= geometry["motion_min_points"]:
                 self.motion_activity.append({
                     "timestamp": timestamp,
                     "camera": camera,
-                    "direction_points": dict(direction_points),
-                    "axis_points": axis_points,
+                    "motion_points": motion_points,
                 })
                 self._match_motion(timestamp)
             self._save_ready_evidence()
@@ -290,7 +282,7 @@ class DoorCounter:
         previous = state["previous_gray"]
         state["previous_gray"] = gray
         if previous is None:
-            return Counter(), 0, []
+            return 0, []
         if state["mask"] is None:
             roi = np.zeros(gray.shape, dtype=np.uint8)
             band = np.zeros_like(roi)
@@ -305,7 +297,7 @@ class DoorCounter:
             qualityLevel=0.01, minDistance=4, blockSize=5,
         )
         if points is None:
-            return Counter(), 0, []
+            return 0, []
         current, status, _ = cv2.calcOpticalFlowPyrLK(
             previous, gray, points, None, winSize=(21, 21), maxLevel=3,
             criteria=(
@@ -313,7 +305,7 @@ class DoorCounter:
             ),
         )
         if current is None or status is None:
-            return Counter(), 0, []
+            return 0, []
         backward, backward_status, _ = cv2.calcOpticalFlowPyrLK(
             gray, previous, current, None, winSize=(21, 21), maxLevel=3,
             criteria=(
@@ -321,42 +313,18 @@ class DoorCounter:
             ),
         )
         if backward is None or backward_status is None:
-            return Counter(), 0, []
-        result = Counter()
-        axis_points = 0
+            return 0, []
         vectors = []
-        (x1, y1), (x2, y2) = geometry["line"]
-        line_length = math.hypot(x2 - x1, y2 - y1)
-        line_unit = ((x2 - x1) / line_length, (y2 - y1) / line_length)
         for start, end, returned, ok, backward_ok in zip(
             points.reshape(-1, 2), current.reshape(-1, 2),
             backward.reshape(-1, 2), status.ravel(), backward_status.ravel(),
         ):
             if not ok or not backward_ok or math.dist(start, returned) > 1.5:
                 continue
-            projection = (
-                (end[0] - start[0]) * line_unit[0]
-                + (end[1] - start[1]) * line_unit[1]
-            )
-            along_axis = (
-                abs(projection) >= geometry["motion_min_displacement_px"]
-            )
-            if along_axis:
-                axis_points += 1
-            start_side = self._side(start, geometry["line"], MOTION_MARGIN_PX)
-            end_side = self._side(end, geometry["line"], MOTION_MARGIN_PX)
-            if not start_side or not end_side or start_side == end_side:
-                if along_axis:
-                    vectors.append((start, end, "axis"))
+            if math.dist(start, end) < geometry["motion_min_displacement_px"]:
                 continue
-            direction = (
-                "left_to_right" if (start_side, end_side) == (-1, 1)
-                else "right_to_left"
-            )
-            direction = geometry["directions"][direction]
-            result[direction] += 1
-            vectors.append((start, end, direction))
-        return result, axis_points, vectors
+            vectors.append((start, end))
+        return len(vectors), vectors
 
     def _track_diagnostic(
         self, timestamp, camera, track_id, bbox, score, foot, side,
@@ -514,8 +482,7 @@ class DoorCounter:
                 cameras=[observation["camera"], candidate["camera"]],
                 direction=event["direction"],
                 delta_seconds=round(delta, 3),
-                motion_direction_points=candidate["direction_points"],
-                motion_axis_points=candidate["axis_points"],
+                motion_points=candidate["motion_points"],
             )
 
     def _expire_events(self, timestamp, force=False):
@@ -588,12 +555,8 @@ class DoorCounter:
             (0, 0, 255), 2, cv2.LINE_AA,
         )
         if camera in self.motion:
-            for start, end, direction in labels:
-                color = {
-                    "entry": (0, 255, 0),
-                    "exit": (0, 165, 255),
-                    "axis": (255, 255, 0),
-                }[direction]
+            for start, end in labels:
+                color = (255, 255, 0)
                 start, end = tuple(map(round, start)), tuple(map(round, end))
                 cv2.arrowedLine(
                     annotated, start, end, color, 2, cv2.LINE_AA,
@@ -689,10 +652,35 @@ class DoorCounter:
             "unconfirmed_passages": sum(
                 not event["confirmed"] for event in self.events
             ),
+            "motion_activity_intervals": self._motion_activity_intervals(),
             "passages": [
                 self._passage_summary(event) for event in self.events
             ],
         }
+
+    def _motion_activity_intervals(self):
+        result = []
+        for camera in self.motion:
+            previous = None
+            for activity in (
+                item for item in self.motion_activity
+                if item["camera"] == camera
+            ):
+                timestamp = activity["timestamp"]
+                if (
+                    previous is not None
+                    and (timestamp - previous).total_seconds()
+                    < MOTION_ACTIVITY_GAP_SECONDS
+                ):
+                    result[-1]["end"] = self._timestamp(timestamp)
+                else:
+                    result.append({
+                        "camera": camera,
+                        "start": self._timestamp(timestamp),
+                        "end": self._timestamp(timestamp),
+                    })
+                previous = timestamp
+        return result
 
     def _passage_summary(self, event):
         observation = event["observations"][0]

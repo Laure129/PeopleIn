@@ -1,0 +1,75 @@
+{
+  "video_duration_seconds": 123,
+  "processing_time_seconds": 15.096,
+  "people_inside_match_pct": 99.186992,
+  "entered_total": 4,
+  "exited_total": 0,
+  "people_inside": 4,
+  "people_inside_confidence": 1.0,
+  "observations_by_camera": {
+    "entrance": 4,
+    "loby": 0
+  },
+  "confirmed_passages": 4,
+  "unconfirmed_passages": 0,
+  "motion_activity_intervals": [
+    {
+      "camera": "loby",
+      "start": "2026-07-13 23:57:18.000",
+      "end": "2026-07-13 23:57:20.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13 23:57:55.280",
+      "end": "2026-07-13 23:57:55.280"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13 23:58:00.280",
+      "end": "2026-07-13 23:58:00.920"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13 23:58:55.880",
+      "end": "2026-07-13 23:58:57.880"
+    }
+  ],
+  "passages": [
+    {
+      "timestamp": "2026-07-13 23:57:20.320",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmed": true,
+      "motion_timestamp": "2026-07-13 23:57:20.000",
+      "motion_delta_seconds": 0.32
+    },
+    {
+      "timestamp": "2026-07-13 23:58:01.280",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmed": true,
+      "motion_timestamp": "2026-07-13 23:58:00.920",
+      "motion_delta_seconds": 0.36
+    },
+    {
+      "timestamp": "2026-07-13 23:58:56.880",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmed": true,
+      "motion_timestamp": "2026-07-13 23:58:56.560",
+      "motion_delta_seconds": 0.32
+    },
+    {
+      "timestamp": "2026-07-13 23:58:58.880",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmed": true,
+      "motion_timestamp": "2026-07-13 23:58:57.880",
+      "motion_delta_seconds": 1.0
+    }
+  ],
+  "log_file": "runs/0.3.5/run.log",
+  "diagnostics_file": "runs/0.3.5/diagnostics.jsonl",
+  "evidence_dir": "runs/0.3.5/evidence",
+  "command": "/usr/local/bin/python -m peoplein.run --start-time 2026-07-13T23:57:01 --duration 123"
+}
