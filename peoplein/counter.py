@@ -160,7 +160,7 @@ class DoorCounter:
         line = geometry["line"]
         started = time.monotonic()
         if camera in self.motion:
-            direction_points = self._motion_flow(camera, frame)
+            direction_points, flow_vectors = self._motion_flow(camera, frame)
             inference_ms = round((time.monotonic() - started) * 1000, 3)
             self._diagnostic(
                 "motion_flow", timestamp, camera,
@@ -168,7 +168,9 @@ class DoorCounter:
                 point_count=sum(direction_points.values()),
                 direction_points=dict(direction_points),
             )
-            self.frame_history[camera].append((frame.copy(), timestamp, []))
+            self.frame_history[camera].append((
+                frame.copy(), timestamp, flow_vectors,
+            ))
             if sum(direction_points.values()) >= geometry["motion_min_points"]:
                 self.motion_activity.append({
                     "timestamp": timestamp,
@@ -281,7 +283,7 @@ class DoorCounter:
         previous = state["previous_gray"]
         state["previous_gray"] = gray
         if previous is None:
-            return Counter()
+            return Counter(), []
         if state["mask"] is None:
             roi = np.zeros(gray.shape, dtype=np.uint8)
             band = np.zeros_like(roi)
@@ -296,7 +298,7 @@ class DoorCounter:
             qualityLevel=0.01, minDistance=4, blockSize=5,
         )
         if points is None:
-            return Counter()
+            return Counter(), []
         current, status, _ = cv2.calcOpticalFlowPyrLK(
             previous, gray, points, None, winSize=(21, 21), maxLevel=3,
             criteria=(
@@ -304,7 +306,7 @@ class DoorCounter:
             ),
         )
         if current is None or status is None:
-            return Counter()
+            return Counter(), []
         backward, backward_status, _ = cv2.calcOpticalFlowPyrLK(
             gray, previous, current, None, winSize=(21, 21), maxLevel=3,
             criteria=(
@@ -312,8 +314,9 @@ class DoorCounter:
             ),
         )
         if backward is None or backward_status is None:
-            return Counter()
+            return Counter(), []
         result = Counter()
+        vectors = []
         for start, end, returned, ok, backward_ok in zip(
             points.reshape(-1, 2), current.reshape(-1, 2),
             backward.reshape(-1, 2), status.ravel(), backward_status.ravel(),
@@ -328,8 +331,10 @@ class DoorCounter:
                 "left_to_right" if (start_side, end_side) == (-1, 1)
                 else "right_to_left"
             )
-            result[geometry["directions"][direction]] += 1
-        return result
+            direction = geometry["directions"][direction]
+            result[direction] += 1
+            vectors.append((start, end, direction))
+        return result, vectors
 
     def _track_diagnostic(
         self, timestamp, camera, track_id, bbox, score, foot, side,
@@ -559,28 +564,40 @@ class DoorCounter:
             annotated, *self.cameras[camera]["line"],
             (0, 0, 255), 2, cv2.LINE_AA,
         )
-        for track_id, bbox, score, side, point in labels:
-            if score < self.confidence:
-                continue
-            x, y, width, height = map(int, bbox)
-            color = (0, 255, 0)
-            cv2.rectangle(
-                annotated, (x, y), (x + width, y + height), color, 2,
-            )
-            if track_id is not None:
-                cv2.circle(
-                    annotated, tuple(map(round, point)),
-                    4, (255, 0, 0), -1,
+        if camera in self.motion:
+            for start, end, direction in labels:
+                color = (0, 255, 0) if direction == "entry" else (0, 165, 255)
+                start, end = tuple(map(round, start)), tuple(map(round, end))
+                cv2.arrowedLine(
+                    annotated, start, end, color, 2, cv2.LINE_AA,
+                    tipLength=0.25,
                 )
-            cv2.putText(
-                annotated,
-                (
-                    f"track={track_id} conf={score:.2f} {self._side_name(side)}"
-                    if track_id is not None else f"conf={score:.2f} diagnostic"
-                ),
-                (x, max(15, y - 5)), cv2.FONT_HERSHEY_SIMPLEX,
-                0.45, color, 1, cv2.LINE_AA,
-            )
+                cv2.circle(annotated, end, 3, color, -1, cv2.LINE_AA)
+        else:
+            for track_id, bbox, score, side, point in labels:
+                if score < self.confidence:
+                    continue
+                x, y, width, height = map(int, bbox)
+                color = (0, 255, 0)
+                cv2.rectangle(
+                    annotated, (x, y), (x + width, y + height), color, 2,
+                )
+                if track_id is not None:
+                    cv2.circle(
+                        annotated, tuple(map(round, point)),
+                        4, (255, 0, 0), -1,
+                    )
+                cv2.putText(
+                    annotated,
+                    (
+                        f"track={track_id} conf={score:.2f} "
+                        f"{self._side_name(side)}"
+                        if track_id is not None
+                        else f"conf={score:.2f} diagnostic"
+                    ),
+                    (x, max(15, y - 5)), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.45, color, 1, cv2.LINE_AA,
+                )
         cv2.putText(
             annotated,
             f"{kind}={event_id} frame={offset:+d} "
