@@ -14,6 +14,7 @@ import numpy as np
 from .database import record_passage
 
 DIAGNOSTIC_CONFIDENCE = 0.01
+MOTION_MARGIN_PX = 5
 
 
 class PersonDetector:
@@ -63,12 +64,55 @@ class PersonDetector:
         ]
 
 
+class OpenVinoPersonDetector:
+    def __init__(self, model_path, confidence):
+        from openvino import Core
+
+        self.model = Core().compile_model(str(model_path), "CPU")
+        self.input = self.model.input(0)
+        self.output = self.model.output(0)
+        _, _, height, width = self.input.shape
+        self.height, self.width = int(height), int(width)
+        self.confidence = confidence
+
+    def __call__(self, frame):
+        height, width = frame.shape[:2]
+        image = cv2.resize(frame, (self.width, self.height))
+        image = image.transpose(2, 0, 1)[None]
+        detections = self.model([image])[self.output].reshape(-1, 7)
+        result = []
+        for image_id, label, score, x1, y1, x2, y2 in detections:
+            if image_id < 0:
+                break
+            if label != 0 or score < self.confidence:
+                continue
+            box = (
+                max(0, round(x1 * width)),
+                max(0, round(y1 * height)),
+                min(width, round(x2 * width)),
+                min(height, round(y2 * height)),
+            )
+            if box[2] > box[0] and box[3] > box[1]:
+                result.append((
+                    (box[0], box[1], box[2] - box[0], box[3] - box[1]),
+                    float(score),
+                ))
+        return result
+
+
+def person_detector(model_path, confidence):
+    if Path(model_path).suffix == ".xml":
+        return OpenVinoPersonDetector(model_path, confidence)
+    return PersonDetector(model_path, confidence)
+
+
 @dataclass
 class Track:
     foot: tuple
     side: int
     side_point: tuple
     misses: int = 0
+    crossed: bool = False
 
 
 class DoorCounter:
@@ -79,9 +123,24 @@ class DoorCounter:
     ):
         self.cameras = cameras
         self.confidence = confidence
-        self.detector = detector or PersonDetector(
+        self.detector = detector or person_detector(
             model_path, DIAGNOSTIC_CONFIDENCE,
         )
+        self.motion = {
+            camera: {
+                "subtractor": cv2.createBackgroundSubtractorMOG2(
+                    history=90, varThreshold=25, detectShadows=False,
+                ),
+                "open_kernel": cv2.getStructuringElement(
+                    cv2.MORPH_ELLIPSE, (3, 3),
+                ),
+                "close_kernel": cv2.getStructuringElement(
+                    cv2.MORPH_ELLIPSE, (7, 7),
+                ),
+            }
+            for camera, geometry in cameras.items()
+            if "motion_roi" in geometry
+        }
         self.agreement_seconds = agreement_seconds
         self.crossing_margin_px = crossing_margin_px
         self.database_path = database_path
@@ -89,6 +148,7 @@ class DoorCounter:
         self.tracks = {camera: {} for camera in cameras}
         self.next_track_id = 1
         self.events = []
+        self.motion_candidates = []
         self.observations = []
         self.observations_by_camera = Counter()
         self.mismatch_pairs = set()
@@ -110,91 +170,123 @@ class DoorCounter:
         geometry = self.cameras[camera]
         line = geometry["line"]
         started = time.monotonic()
-        raw_detections = [
-            (bbox, score) for bbox, score in self.detector(frame)
-            if score >= DIAGNOSTIC_CONFIDENCE
-        ]
-        detections, diagnostic_only = [], []
-        for bbox, score in raw_detections:
-            target = detections if score >= self.confidence or (
-                score >= geometry.get("door_confidence", self.confidence)
-                and self._distance_to_segment(
-                    (bbox[0] + bbox[2] / 2, bbox[1] + bbox[3]), line,
-                ) <= geometry.get("door_confidence_radius_px", 0)
-            ) else diagnostic_only
-            target.append((bbox, score))
-        inference_ms = round((time.monotonic() - started) * 1000, 3)
-        feet = [
-            (x + width / 2, y + height)
-            for (x, y, width, height), _ in detections
-        ]
-        self._diagnostic(
-            "detection", timestamp, camera,
-            inference_ms=inference_ms,
-            detection_count=len(raw_detections),
-            detections=[
-                {
-                    "bbox": list(map(int, bbox)),
-                    "confidence": round(float(score), 6),
-                }
-                for bbox, score in raw_detections
-            ],
-        )
+        if camera in self.motion:
+            detections, points, foreground_area = self._motion_detections(
+                camera, frame,
+            )
+            diagnostic_only = []
+            inference_ms = round((time.monotonic() - started) * 1000, 3)
+            self._diagnostic(
+                "motion_detection", timestamp, camera,
+                inference_ms=inference_ms,
+                foreground_area=foreground_area,
+                component_count=len(detections),
+                components=[
+                    {
+                        "bbox": list(map(int, bbox)),
+                        "centroid": [round(value, 3) for value in point],
+                    }
+                    for (bbox, _), point in zip(detections, points)
+                ],
+            )
+        else:
+            raw_detections = [
+                (bbox, score) for bbox, score in self.detector(frame)
+                if score >= DIAGNOSTIC_CONFIDENCE
+            ]
+            detections, diagnostic_only = [], []
+            for bbox, score in raw_detections:
+                target = detections if score >= self.confidence or (
+                    score >= geometry.get("door_confidence", self.confidence)
+                    and self._distance_to_segment(
+                        (bbox[0] + bbox[2] / 2, bbox[1] + bbox[3]), line,
+                    ) <= geometry.get("door_confidence_radius_px", 0)
+                ) else diagnostic_only
+                target.append((bbox, score))
+            inference_ms = round((time.monotonic() - started) * 1000, 3)
+            points = [
+                (x + width / 2, y + height)
+                for (x, y, width, height), _ in detections
+            ]
+            self._diagnostic(
+                "detection", timestamp, camera,
+                inference_ms=inference_ms,
+                detection_count=len(raw_detections),
+                detections=[
+                    {
+                        "bbox": list(map(int, bbox)),
+                        "confidence": round(float(score), 6),
+                    }
+                    for bbox, score in raw_detections
+                ],
+            )
 
         tracks = self.tracks[camera]
+        motion = camera in self.motion
         for track in tracks.values():
             track.misses += 1
 
         # ponytail: greedy local matching; add ReID only after measured ID swaps.
         matches = sorted(
             (
-                (math.dist(track.foot, foot), track_id, index)
+                (math.dist(track.foot, point), track_id, index)
                 for track_id, track in tracks.items()
-                for index, foot in enumerate(feet)
+                if not motion or track.misses <= 3
+                for index, point in enumerate(points)
             ),
             key=lambda item: item[0],
         )
-        used_tracks, used_feet = set(), set()
+        used_tracks, used_points = set(), set()
         labels, crossings = [], []
         for distance, track_id, index in matches:
-            if distance > 120 or track_id in used_tracks or index in used_feet:
+            if distance > 120 or track_id in used_tracks or index in used_points:
                 continue
             used_tracks.add(track_id)
-            used_feet.add(index)
+            used_points.add(index)
             direction, previous_side = self._move_track(
-                tracks[track_id], feet[index], line,
+                tracks[track_id], points[index], line,
+                MOTION_MARGIN_PX if motion else None,
             )
             bbox, score = detections[index]
-            labels.append((track_id, bbox, score, tracks[track_id].side))
+            labels.append((
+                track_id, bbox, score, tracks[track_id].side, points[index],
+            ))
             self._track_diagnostic(
-                timestamp, camera, track_id, bbox, score, feet[index],
+                timestamp, camera, track_id, bbox, score, points[index],
                 tracks[track_id].side, round(distance, 3), "matched", line,
             )
-            if direction is not None:
+            if direction is not None and not (
+                motion and tracks[track_id].crossed
+            ):
+                tracks[track_id].crossed = True
                 crossings.append((
-                    track_id, geometry["directions"][direction], feet[index],
+                    track_id, geometry["directions"][direction], points[index],
                     previous_side, tracks[track_id].side,
                 ))
 
-        for index, foot in enumerate(feet):
-            if index in used_feet:
+        for index, point in enumerate(points):
+            if index in used_points:
                 continue
-            side = self._side(foot, line)
+            side = self._side(
+                point, line, MOTION_MARGIN_PX if motion else None,
+            )
             track_id = self.next_track_id
-            tracks[track_id] = Track(foot, side, foot)
+            tracks[track_id] = Track(point, side, point)
             self.next_track_id += 1
             bbox, score = detections[index]
-            labels.append((track_id, bbox, score, side))
+            labels.append((track_id, bbox, score, side, point))
             self._track_diagnostic(
-                timestamp, camera, track_id, bbox, score, foot, side,
+                timestamp, camera, track_id, bbox, score, point, side,
                 None, "new", line,
             )
         labels.extend(
-            (None, bbox, score, None) for bbox, score in diagnostic_only
+            (None, bbox, score, None, None)
+            for bbox, score in diagnostic_only
         )
         self.frame_history[camera].append((frame.copy(), timestamp, labels))
         for track_id in [
-            track_id for track_id, track in tracks.items() if track.misses > 5
+            track_id for track_id, track in tracks.items()
+            if track.misses > (3 if motion else 5)
         ]:
             del tracks[track_id]
         for track_id, direction, foot, previous_side, side in crossings:
@@ -204,26 +296,52 @@ class DoorCounter:
             )
         self._save_ready_evidence()
 
+    def _motion_detections(self, camera, frame):
+        geometry = self.cameras[camera]
+        state = self.motion[camera]
+        mask = state["subtractor"].apply(frame, learningRate=0.005)
+        roi = np.zeros(frame.shape[:2], dtype=np.uint8)
+        cv2.rectangle(roi, *geometry["motion_roi"], 255, -1)
+        mask = cv2.bitwise_and(mask, roi)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, state["open_kernel"])
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, state["close_kernel"])
+        count, _, stats, centroids = cv2.connectedComponentsWithStats(mask)
+        detections, points = [], []
+        for label in range(1, count):
+            x, y, width, height, area = stats[label]
+            if (
+                geometry["motion_min_area"] <= area <= 50000
+                and width >= 8 and height >= 12
+            ):
+                detections.append(((x, y, width, height), 1.0))
+                points.append(tuple(centroids[label]))
+        return detections, points, int(cv2.countNonZero(mask))
+
     def _track_diagnostic(
         self, timestamp, camera, track_id, bbox, score, foot, side,
         match_distance, state, line,
     ):
         self._diagnostic(
-            "track_update", timestamp, camera,
+            "motion_track_update" if camera in self.motion else "track_update",
+            timestamp, camera,
             track_id=track_id,
             state=state,
             bbox=list(map(int, bbox)),
             detection_confidence=round(float(score), 6),
-            foot=[round(value, 3) for value in foot],
+            **{
+                "centroid" if camera in self.motion else "foot": [
+                    round(value, 3) for value in foot
+                ],
+            },
             side=self._side_name(side),
             signed_distance_to_line=round(self._signed_distance(foot, line), 3),
             match_distance=match_distance,
         )
 
-    def _move_track(self, track, foot, line):
+    def _move_track(self, track, foot, line, margin=None):
         track.misses = 0
         track.foot = foot
-        side = self._side(foot, line)
+        side = self._side(foot, line, margin)
         if side == 0:
             return None, None
         if track.side == 0 or side == track.side:
@@ -259,11 +377,12 @@ class DoorCounter:
         closest = (start[0] + fraction * dx, start[1] + fraction * dy)
         return math.dist(point, closest)
 
-    def _side(self, point, line):
+    def _side(self, point, line, margin=None):
         distance = self._signed_distance(point, line)
-        if distance < -self.crossing_margin_px:
+        margin = self.crossing_margin_px if margin is None else margin
+        if distance < -margin:
             return -1
-        if distance > self.crossing_margin_px:
+        if distance > margin:
             return 1
         return 0
 
@@ -289,6 +408,28 @@ class DoorCounter:
         self, timestamp, camera, direction, track_id, foot,
         previous_side, side,
     ):
+        if camera in self.motion:
+            candidate = {
+                "timestamp": timestamp,
+                "camera": camera,
+                "direction": direction,
+                "track_id": track_id,
+                "matched": False,
+                "unmatched_logged": False,
+            }
+            self.motion_candidates.append(candidate)
+            self.observations_by_camera[camera] += 1
+            self._diagnostic(
+                "motion_crossing", timestamp, camera,
+                track_id=track_id,
+                direction=direction,
+                centroid=[round(value, 3) for value in foot],
+                previous_side=self._side_name(previous_side),
+                side=self._side_name(side),
+            )
+            self._match_motion(timestamp)
+            return
+
         observation_id = record_passage(
             self.database_path, timestamp, self.app_version, camera, direction,
         )
@@ -309,79 +450,90 @@ class DoorCounter:
             previous_side=self._side_name(previous_side),
             side=self._side_name(side),
         )
-
-        # ponytail: time-only agreement; add cross-camera ReID if simultaneous
-        # passages prove that this pairs different people.
-        matches = [
-            event for event in self.events
-            if len(event["observations"]) == 1
-            and event["direction"] == direction
-            and camera != event["observations"][0]["camera"]
-            and abs((timestamp - event["timestamp"]).total_seconds())
-            <= self.agreement_seconds
-        ]
-        opposites = [
-            event for event in self.events
-            if len(event["observations"]) == 1
-            and event["direction"] != direction
-            and camera != event["observations"][0]["camera"]
-            and abs((timestamp - event["timestamp"]).total_seconds())
-            <= self.agreement_seconds
-        ]
-        if opposites:
-            other = min(
-                opposites,
-                key=lambda item: abs(
-                    (timestamp - item["timestamp"]).total_seconds()
-                ),
-            )["observations"][0]
-            pair = frozenset((observation_id, other["id"]))
-            if pair not in self.mismatch_pairs:
-                self.mismatch_pairs.add(pair)
-                self._diagnostic(
-                    "direction_mismatch", timestamp,
-                    observation_ids=sorted(pair),
-                    cameras=[other["camera"], camera],
-                    directions=[other["direction"], direction],
-                )
-        if matches:
-            event = min(
-                matches,
-                key=lambda item: abs(
-                    (timestamp - item["timestamp"]).total_seconds()
-                ),
-            )
-            event["observations"].append(observation)
-            delta = abs((timestamp - event["timestamp"]).total_seconds())
-            self._diagnostic(
-                "passage_agreement", timestamp,
-                observation_ids=[item["id"] for item in event["observations"]],
-                cameras=[item["camera"] for item in event["observations"]],
-                direction=direction,
-                delta_seconds=round(delta, 3),
-            )
-        else:
-            self.events.append({
-                "timestamp": timestamp,
-                "direction": direction,
-                "observations": [observation],
-                "unconfirmed_logged": False,
-            })
+        self.events.append({
+            "timestamp": timestamp,
+            "direction": direction,
+            "observations": [observation],
+            "confirmed": False,
+            "unconfirmed_logged": False,
+        })
+        self._match_motion(timestamp)
         if self.evidence_dir:
             self.pending_evidence.append((observation_id, timestamp))
 
+    def _match_motion(self, timestamp, force=False):
+        pairs = sorted(
+            (
+                (
+                    abs((event["timestamp"] - candidate["timestamp"])
+                        .total_seconds()),
+                    event,
+                    candidate,
+                )
+                for event in self.events
+                if not event["confirmed"]
+                for candidate in self.motion_candidates
+                if not candidate["matched"]
+                and event["direction"] == candidate["direction"]
+                and abs((event["timestamp"] - candidate["timestamp"])
+                        .total_seconds()) <= self.agreement_seconds
+            ),
+            key=lambda item: item[0],
+        )
+        used_events, used_candidates = set(), set()
+        for delta, event, candidate in pairs:
+            event_key, candidate_key = id(event), id(candidate)
+            if event_key in used_events or candidate_key in used_candidates:
+                continue
+            used_events.add(event_key)
+            used_candidates.add(candidate_key)
+            age = (timestamp - event["timestamp"]).total_seconds()
+            if not force and age <= self.agreement_seconds:
+                continue
+            event["confirmed"] = True
+            candidate["matched"] = True
+            observation = event["observations"][0]
+            self._diagnostic(
+                "passage_agreement", timestamp,
+                observation_ids=[observation["id"]],
+                motion_track_id=candidate["track_id"],
+                cameras=[observation["camera"], candidate["camera"]],
+                direction=event["direction"],
+                delta_seconds=round(delta, 3),
+            )
+
     def _expire_events(self, timestamp, force=False):
+        self._match_motion(timestamp, force)
+        for candidate in self.motion_candidates:
+            if candidate["matched"] or candidate["unmatched_logged"]:
+                continue
+            age = (timestamp - candidate["timestamp"]).total_seconds()
+            if not force and age <= self.agreement_seconds * 2:
+                continue
+            self._diagnostic(
+                "motion_unmatched", timestamp, candidate["camera"],
+                track_id=candidate["track_id"],
+                crossing_time=self._timestamp(candidate["timestamp"]),
+                direction=candidate["direction"],
+                waited_seconds=round(max(age, 0), 3),
+            )
+            candidate["unmatched_logged"] = True
         for event in self.events:
-            if len(event["observations"]) != 1 or event["unconfirmed_logged"]:
+            if event["confirmed"] or event["unconfirmed_logged"]:
                 continue
             age = (timestamp - event["timestamp"]).total_seconds()
             if not force and age <= self.agreement_seconds:
                 continue
             observation = event["observations"][0]
             opposite = any(
-                pair for pair in self.mismatch_pairs
-                if observation["id"] in pair
+                not candidate["matched"]
+                and candidate["direction"] != event["direction"]
+                and abs((candidate["timestamp"] - event["timestamp"])
+                        .total_seconds()) <= self.agreement_seconds
+                for candidate in self.motion_candidates
             )
+            if opposite:
+                self.mismatch_pairs.add(observation["id"])
             self._diagnostic(
                 "passage_unconfirmed", timestamp, observation["camera"],
                 observation_id=observation["id"],
@@ -445,7 +597,7 @@ class DoorCounter:
             annotated, *self.cameras[camera]["line"],
             (0, 0, 255), 2, cv2.LINE_AA,
         )
-        for track_id, bbox, score, side in labels:
+        for track_id, bbox, score, side, point in labels:
             x, y, width, height = map(int, bbox)
             color = (
                 (0, 255, 0) if score >= self.confidence else (0, 165, 255)
@@ -455,7 +607,7 @@ class DoorCounter:
             )
             if track_id is not None:
                 cv2.circle(
-                    annotated, (x + width // 2, y + height),
+                    annotated, tuple(map(round, point)),
                     4, (255, 0, 0), -1,
                 )
             cv2.putText(
@@ -509,9 +661,7 @@ class DoorCounter:
     def snapshot(self, timestamp=None):
         entered = sum(event["direction"] == "entry" for event in self.events)
         exited = sum(event["direction"] == "exit" for event in self.events)
-        confirmed = sum(
-            len(event["observations"]) > 1 for event in self.events
-        )
+        confirmed = sum(event["confirmed"] for event in self.events)
         confidence = confirmed / len(self.events) if self.events else 1.0
         result = {
             "entered_total": entered,
@@ -529,11 +679,9 @@ class DoorCounter:
                 camera: self.observations_by_camera[camera]
                 for camera in self.cameras
             },
-            "confirmed_passages": sum(
-                len(event["observations"]) > 1 for event in self.events
-            ),
+            "confirmed_passages": sum(event["confirmed"] for event in self.events),
             "unconfirmed_passages": sum(
-                len(event["observations"]) == 1 for event in self.events
+                not event["confirmed"] for event in self.events
             ),
             "direction_mismatches": len(self.mismatch_pairs),
         }

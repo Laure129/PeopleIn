@@ -26,6 +26,14 @@ class ScoredDetector:
         return next(self.detections)
 
 
+class FakeSubtractor:
+    def __init__(self, masks):
+        self.masks = iter(masks)
+
+    def apply(self, _frame, learningRate):
+        return next(self.masks)
+
+
 class DoorCounterTest(unittest.TestCase):
     def test_evidence_has_three_frames_before_and_after_for_each_camera(self):
         directions = {
@@ -123,25 +131,32 @@ class DoorCounterTest(unittest.TestCase):
             self.assertEqual(detection["detection_count"], 1)
             self.assertEqual(detection["detections"][0]["confidence"], 0.02)
 
-    def test_both_cameras_record_and_confirm_entry_and_exit(self):
+    def test_motion_only_confirms_entrance_passage(self):
         cameras = {
-            camera: {
-                "line": ((0, 0), (0, 20)),
+            "entrance": {
+                "line": ((0, 0), (0, 40)),
                 "directions": {
                     "left_to_right": "entry",
                     "right_to_left": "exit",
                 },
-            }
-            for camera in ("entrance", "loby")
+            },
+            "loby": {
+                "line": ((30, 0), (30, 40)),
+                "directions": {
+                    "right_to_left": "entry",
+                    "left_to_right": "exit",
+                },
+                "motion_roi": ((0, 0), (59, 39)),
+                "motion_min_area": 50,
+            },
         }
-        boxes = [
-            [(-12, 0, 4, 10)], [(8, 0, 4, 10)],
-            [(-12, 0, 4, 10)], [(8, 0, 4, 10)],
-            [(8, 0, 4, 10)], [(-12, 0, 4, 10)],
-            [(8, 0, 4, 10)], [(-12, 0, 4, 10)],
-        ]
         started = datetime(2026, 1, 2, 3, 4, 5)
-        frame = np.zeros((20, 20, 3), dtype=np.uint8)
+        frame = np.zeros((40, 60, 3), dtype=np.uint8)
+        masks = []
+        for left in (40, 10):
+            mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+            mask[10:25, left:left + 10] = 255
+            masks.append(mask)
 
         with tempfile.TemporaryDirectory() as directory:
             database = Path(directory) / "people.sqlite3"
@@ -154,15 +169,18 @@ class DoorCounterTest(unittest.TestCase):
                 crossing_margin_px=1,
                 database_path=database,
                 app_version="0.2.1",
-                detector=FakeDetector(boxes),
+                detector=FakeDetector([
+                    [(-12, 0, 4, 10)], [(8, 0, 4, 10)],
+                ]),
                 diagnostics_path=diagnostics,
             )
-            counter.update("entrance", frame, started)
-            counter.update("entrance", frame, started + timedelta(seconds=1))
-            self.assertEqual(counter.snapshot()["people_inside_confidence"], 0)
-            counter.finish(started + timedelta(seconds=2))
-            counter.update("loby", frame, started + timedelta(seconds=2))
-            counter.update("loby", frame, started + timedelta(seconds=3))
+            counter.motion["loby"]["subtractor"] = FakeSubtractor(masks)
+            counter.update("loby", frame, started)
+            counter.update("loby", frame, started + timedelta(seconds=1))
+            self.assertEqual(counter.snapshot()["entered_total"], 0)
+            counter.update("entrance", frame, started + timedelta(seconds=2))
+            counter.update("entrance", frame, started + timedelta(seconds=3))
+            counter.finish(started + timedelta(seconds=20))
             self.assertEqual(counter.snapshot(), {
                 "entered_total": 1,
                 "exited_total": 0,
@@ -170,18 +188,6 @@ class DoorCounterTest(unittest.TestCase):
                 "people_inside_confidence": 1.0,
             })
 
-            counter.update("entrance", frame, started + timedelta(seconds=4))
-            counter.update("entrance", frame, started + timedelta(seconds=5))
-            counter.update("loby", frame, started + timedelta(seconds=6))
-            counter.update("loby", frame, started + timedelta(seconds=7))
-
-            self.assertEqual(counter.snapshot(), {
-                "entered_total": 1,
-                "exited_total": 1,
-                "people_inside": 0,
-                "people_inside_confidence": 1.0,
-            })
-            counter.finish(started + timedelta(seconds=20))
             counter.close()
             with sqlite3.connect(database) as connection:
                 rows = connection.execute(
@@ -189,10 +195,7 @@ class DoorCounterTest(unittest.TestCase):
                     "FROM door_passages ORDER BY id"
                 ).fetchall()
             self.assertEqual(rows, [
-                ("2026-01-02 03:04:06.000", "0.2.1", "entrance", "entry"),
-                ("2026-01-02 03:04:08.000", "0.2.1", "loby", "entry"),
-                ("2026-01-02 03:04:10.000", "0.2.1", "entrance", "exit"),
-                ("2026-01-02 03:04:12.000", "0.2.1", "loby", "exit"),
+                ("2026-01-02 03:04:08.000", "0.2.1", "entrance", "entry"),
             ])
             events = {
                 row["event"]
@@ -202,12 +205,13 @@ class DoorCounterTest(unittest.TestCase):
                 )
             }
             self.assertTrue({
+                "motion_detection", "motion_track_update", "motion_crossing",
                 "detection", "track_update", "line_crossing",
-                "passage_unconfirmed", "passage_agreement",
+                "passage_agreement",
             }.issubset(events))
             self.assertEqual(counter.diagnostic_summary(), {
-                "observations_by_camera": {"entrance": 2, "loby": 2},
-                "confirmed_passages": 2,
+                "observations_by_camera": {"entrance": 1, "loby": 1},
+                "confirmed_passages": 1,
                 "unconfirmed_passages": 0,
                 "direction_mismatches": 0,
             })

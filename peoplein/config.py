@@ -137,6 +137,32 @@ def door_counter_settings(config_path=CONFIG_PATH):
             "door_confidence": float(door_confidence),
             "door_confidence_radius_px": float(radius),
         }
+        motion_roi = values.get("motion_roi")
+        if motion_roi is not None:
+            if (
+                not isinstance(motion_roi, list) or len(motion_roi) != 2
+                or any(
+                    not isinstance(point, list) or len(point) != 2
+                    or any(
+                        isinstance(value, bool) or not isinstance(value, int)
+                        for value in point
+                    )
+                    for point in motion_roi
+                )
+                or motion_roi[0][0] >= motion_roi[1][0]
+                or motion_roi[0][1] >= motion_roi[1][1]
+            ):
+                raise ValueError(f"config camera {camera} motion_roi is invalid")
+            minimum = values.get("motion_min_area")
+            if isinstance(minimum, bool) or not isinstance(minimum, int) \
+                    or minimum <= 0:
+                raise ValueError(
+                    f"config camera {camera} motion_min_area is invalid"
+                )
+            result[camera]["motion_roi"] = tuple(
+                tuple(point) for point in motion_roi
+            )
+            result[camera]["motion_min_area"] = minimum
     return {
         "model_path": path.resolve().parent / model,
         "confidence": float(confidence),
