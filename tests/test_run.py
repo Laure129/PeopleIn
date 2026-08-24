@@ -7,7 +7,9 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from peoplein.config import stream_cameras
-from peoplein.run import _reference_interval, occupancy_exact_match_pct
+from peoplein.run import (
+    _reference_events, _reference_interval, occupancy_exact_match_pct,
+)
 from peoplein.stream import _decode_camera, common_archive_interval
 from peoplein.sync import PlaybackClock
 
@@ -88,6 +90,43 @@ class ArchiveRunTest(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(occupancy_exact_match_pct(telemetry, path), 50.0)
+
+    def test_reference_events_follow_total_changes(self):
+        started = datetime(2026, 1, 1)
+        rows = [
+            {
+                "mkv_pts_time": (started + timedelta(seconds=second)).isoformat(),
+                "entered_total": entered,
+                "exited_total": exited,
+            }
+            for second, entered, exited in ((0, 0, 0), (1, 2, 0), (2, 2, 1))
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "reference.jsonl"
+            path.write_text(
+                "".join(json.dumps(row) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+
+            self.assertEqual(_reference_events(
+                path, started, started + timedelta(seconds=3),
+            ), [
+                {
+                    "id": "entry_1",
+                    "timestamp": started + timedelta(seconds=1),
+                    "direction": "entry",
+                },
+                {
+                    "id": "entry_2",
+                    "timestamp": started + timedelta(seconds=1),
+                    "direction": "entry",
+                },
+                {
+                    "id": "exit_1",
+                    "timestamp": started + timedelta(seconds=2),
+                    "direction": "exit",
+                },
+            ])
 
     @patch("peoplein.stream.FRAME_WIDTH", 1)
     @patch("peoplein.stream.FRAME_HEIGHT", 1)

@@ -119,7 +119,7 @@ class DoorCounter:
     def __init__(
         self, cameras, model_path, confidence, agreement_seconds,
         crossing_margin_px, database_path, app_version, detector=None,
-        diagnostics_path=None, evidence_dir=None,
+        diagnostics_path=None, evidence_dir=None, reference_events=(),
     ):
         self.cameras = cameras
         self.confidence = confidence
@@ -142,7 +142,14 @@ class DoorCounter:
         self.frame_history = {
             camera: deque(maxlen=7) for camera in cameras
         }
-        self.pending_evidence = []
+        self.pending_evidence = [
+            (
+                "reference", event["id"], event["timestamp"],
+                tuple(self.cameras), event["direction"],
+            )
+            for event in reference_events
+        ]
+        self.matched_reference_events = set()
         self.evidence_dir = Path(evidence_dir) if evidence_dir else None
         if self.evidence_dir:
             self.evidence_dir.mkdir(parents=True, exist_ok=False)
@@ -446,6 +453,7 @@ class DoorCounter:
         if self.evidence_dir:
             self.pending_evidence.append((
                 "passage", observation_id, timestamp, tuple(self.cameras),
+                direction,
             ))
 
     def _match_motion(self, timestamp, force=False):
@@ -504,14 +512,38 @@ class DoorCounter:
 
     def _save_ready_evidence(self):
         pending = []
-        for kind, event_id, timestamp, cameras in self.pending_evidence:
+        for kind, event_id, timestamp, cameras, direction \
+                in self.pending_evidence:
             windows = {
                 camera: self._evidence_window(camera, timestamp)
                 for camera in cameras
             }
             if any(window is None for window in windows.values()):
-                pending.append((kind, event_id, timestamp, cameras))
+                pending.append((
+                    kind, event_id, timestamp, cameras, direction,
+                ))
                 continue
+            if kind == "reference":
+                matches = [
+                    event for event in self.events
+                    if event["direction"] == direction
+                    and event["observations"][0]["id"]
+                    not in self.matched_reference_events
+                    and abs(
+                        (event["timestamp"] - timestamp).total_seconds()
+                    ) <= 1
+                ]
+                if matches:
+                    match = min(
+                        matches,
+                        key=lambda event: abs(
+                            (event["timestamp"] - timestamp).total_seconds()
+                        ),
+                    )
+                    self.matched_reference_events.add(
+                        match["observations"][0]["id"]
+                    )
+                    continue
             for camera, window in windows.items():
                 for offset, snapshot in zip(range(-3, 4), window):
                     self._save_evidence_frame(
@@ -522,6 +554,8 @@ class DoorCounter:
     def _evidence_window(self, camera, timestamp):
         history = list(self.frame_history[camera])
         if len(history) < 7:
+            return None
+        if not history[0][1] <= timestamp <= history[-1][1]:
             return None
         center = min(
             range(len(history)),

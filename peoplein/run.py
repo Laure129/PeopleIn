@@ -90,6 +90,36 @@ def _reference_interval(reference_path, available_start, available_end):
     return timestamps[0], timestamps[-1] + timedelta(seconds=1)
 
 
+def _reference_events(reference_path, start_time, end_time):
+    rows = sorted(
+        (
+            datetime.fromisoformat(row["mkv_pts_time"]), row
+        )
+        for row in (
+            json.loads(line)
+            for line in Path(reference_path).read_text(
+                encoding="utf-8"
+            ).splitlines()
+            if line.strip()
+        )
+    )
+    events = []
+    previous = rows[0][1]
+    for timestamp, row in rows[1:]:
+        for direction, key in (
+            ("entry", "entered_total"),
+            ("exit", "exited_total"),
+        ):
+            if start_time <= timestamp < end_time:
+                events.extend({
+                    "id": f"{direction}_{total}",
+                    "timestamp": timestamp,
+                    "direction": direction,
+                } for total in range(previous[key] + 1, row[key] + 1))
+        previous = row
+    return events
+
+
 def _telemetry_record(timestamp, counter):
     return {
         "mkv_pts_time": timestamp.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
@@ -150,6 +180,10 @@ def main():
         app_version=__version__,
         diagnostics_path=diagnostics_path,
         evidence_dir=evidence_dir,
+        reference_events=(
+            _reference_events(reference_path, start_time, end_time)
+            if reference_path else ()
+        ),
     )
     command = shlex.join([
         sys.executable, "-m", "peoplein.run", *sys.argv[1:],

@@ -1,0 +1,80 @@
+{
+  "format_version": 1,
+  "app_version": "0.3.10",
+  "run": {
+    "source_archive": "resources/archive_debug_cache",
+    "start_time": "2026-07-13T23:56:04.000",
+    "time_zone": null,
+    "video_duration_seconds": 443.0,
+    "processing_time_seconds": 52.245,
+    "reference_telemetry": "resources/archive_people_telemetry.jsonl"
+  },
+  "result": {
+    "entered_total": 3,
+    "exited_total": 0,
+    "people_inside": 3,
+    "passage_confirmation_ratio": 1.0,
+    "occupancy_exact_match_pct": 39.051919
+  },
+  "motion_activity_intervals": [
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:17.600",
+      "end": "2026-07-13T23:57:17.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:58.200",
+      "end": "2026-07-13T23:58:00.560"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:54.840",
+      "end": "2026-07-13T23:58:59.160"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:59:40.440",
+      "end": "2026-07-13T23:59:40.440"
+    }
+  ],
+  "passages": [
+    {
+      "timestamp": "2026-07-13T23:57:20.240",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:57:17.600",
+        "delta_seconds": 2.64
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:01.200",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:00.560",
+        "delta_seconds": 0.64
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:58.840",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:59.160",
+        "delta_seconds": 0.32
+      }
+    }
+  ],
+  "artifacts": {
+    "log": "run.log",
+    "diagnostics": "diagnostics.jsonl",
+    "evidence": "evidence",
+    "config": "config.toml"
+  },
+  "command": "/home/codex/.cache/uv/builds-v0/.tmpX2hBEz/bin/python -m peoplein.run --compare-reference"
+}

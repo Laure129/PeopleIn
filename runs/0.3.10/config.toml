@@ -1,0 +1,41 @@
+debug = true
+prepare_benchmark = true
+archive_dir = "archive_debug_cache"
+frame_interval_ms = 333
+person_model = "models/person-detection-0202.xml"
+person_confidence = 0.75
+door_agreement_seconds = 15
+crossing_margin_px = 10
+
+[cameras.entrance]
+location = "inside"
+view = "entrance"
+door_line = [[280, 170], [150, 355]]
+entry_direction = "left_to_right"
+exit_direction = "right_to_left"
+
+[cameras.hall1]
+location = "inside"
+
+[cameras.hall2]
+location = "inside"
+
+[cameras.hall3]
+location = "inside"
+
+[cameras.hall4]
+location = "inside"
+
+[cameras.hall5]
+location = "inside"
+
+[cameras.loby]
+location = "outside"
+view = "exit"
+door_line = [[255, 120], [280, 355]]
+entry_direction = "right_to_left"
+exit_direction = "left_to_right"
+motion_roi = [[220, 90], [485, 359]]
+motion_band_width_px = 30
+motion_min_points = 3
+motion_min_displacement_px = 30

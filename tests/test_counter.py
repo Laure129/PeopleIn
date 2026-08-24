@@ -43,7 +43,7 @@ class DoorCounterTest(unittest.TestCase):
                     expected,
                 )
 
-    def test_evidence_has_three_frames_before_and_after_for_each_camera(self):
+    def test_reference_evidence_saves_misses_without_duplicates(self):
         directions = {
             "left_to_right": "entry",
             "right_to_left": "exit",
@@ -56,7 +56,7 @@ class DoorCounterTest(unittest.TestCase):
             for camera in ("entrance", "loby")
         }
         boxes = []
-        for tick in range(7):
+        for tick in range(10):
             boxes.extend((
                 [(-12 if tick < 3 else 8, 0, 4, 10)],
                 [],
@@ -76,8 +76,25 @@ class DoorCounterTest(unittest.TestCase):
                 app_version="test",
                 detector=FakeDetector(boxes),
                 evidence_dir=evidence,
+                reference_events=[
+                    {
+                        "id": "entry_1",
+                        "timestamp": started + timedelta(seconds=3),
+                        "direction": "entry",
+                    },
+                    {
+                        "id": "entry_2",
+                        "timestamp": started + timedelta(seconds=3),
+                        "direction": "entry",
+                    },
+                    {
+                        "id": "exit_1",
+                        "timestamp": started + timedelta(seconds=6),
+                        "direction": "exit",
+                    },
+                ],
             )
-            for tick in range(7):
+            for tick in range(10):
                 timestamp = started + timedelta(seconds=tick)
                 for camera in cameras:
                     counter.update(camera, frame, timestamp)
@@ -86,6 +103,14 @@ class DoorCounterTest(unittest.TestCase):
                 {path.name for path in evidence.iterdir()},
                 {
                     f"passage_1_{camera}_frame_{offset:+d}.jpg"
+                    for camera in cameras
+                    for offset in range(-3, 4)
+                } | {
+                    f"reference_entry_2_{camera}_frame_{offset:+d}.jpg"
+                    for camera in cameras
+                    for offset in range(-3, 4)
+                } | {
+                    f"reference_exit_1_{camera}_frame_{offset:+d}.jpg"
                     for camera in cameras
                     for offset in range(-3, 4)
                 },
