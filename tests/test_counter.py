@@ -8,7 +8,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from peoplein.counter import DoorCounter
+from peoplein.counter import DoorCounter, Track
 
 
 class FakeDetector:
@@ -28,6 +28,21 @@ class ScoredDetector:
 
 
 class DoorCounterTest(unittest.TestCase):
+    def test_track_leaving_door_line_counts_as_crossing(self):
+        counter = DoorCounter.__new__(DoorCounter)
+        line = ((0, 0), (0, 20))
+
+        for x, expected in (
+            (5, ("left_to_right", -1)),
+            (-5, ("right_to_left", 1)),
+        ):
+            with self.subTest(x=x):
+                track = Track((0, 10), 0, (0, 10))
+                self.assertEqual(
+                    counter._move_track(track, (x, 10), line, margin=1),
+                    expected,
+                )
+
     def test_evidence_has_three_frames_before_and_after_for_each_camera(self):
         directions = {
             "left_to_right": "entry",

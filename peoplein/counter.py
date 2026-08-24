@@ -351,12 +351,14 @@ class DoorCounter:
         side = self._side(foot, line, margin)
         if side == 0:
             return None, None
-        if track.side == 0 or side == track.side:
+        if side == track.side:
             track.side = side
             track.side_point = foot
             return None, None
-        previous_side = track.side
-        crossed = self._segments_intersect(track.side_point, foot, *line)
+        previous_side = -side if track.side == 0 else track.side
+        crossed = track.side == 0 or self._segments_intersect(
+            track.side_point, foot, *line,
+        )
         track.side = side
         track.side_point = foot
         if not crossed:
