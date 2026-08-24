@@ -13,7 +13,7 @@ from pathlib import Path
 from . import __version__
 from .config import (
     CONFIG_PATH, DATABASE_PATH, PROJECT_DIR,
-    archive_dir as configured_archive_dir,
+    archive_dir as configured_archive_dir, archive_server,
     debug_mode, door_counter_settings, frame_interval_ms,
     prepare_benchmark_enabled, stream_cameras,
 )
@@ -21,7 +21,7 @@ from .counter import DoorCounter
 from .prepare_benchmark import prepare_benchmark
 from .stream import (
     FRAME_HEIGHT, FRAME_WIDTH, FrameStore, build_archive_plan,
-    common_archive_interval, start_decoders,
+    common_archive_interval, remote_archive, start_decoders,
 )
 from .sync import PlaybackClock, archive_skew_ms, capture_needs_resync
 
@@ -131,11 +131,28 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--archive-dir", type=Path,
-        default=configured_archive_dir(),
     )
     parser.add_argument("--compare-reference", action="store_true")
     parser.add_argument("--start-offset-ms", type=int, default=0)
     args = parser.parse_args()
+    server = archive_server()
+    if args.archive_dir is not None or server is None:
+        args.archive_dir = args.archive_dir or configured_archive_dir()
+        return _run(args, parser)
+
+    base_url, login, password = server
+    with remote_archive(
+        base_url,
+        stream_cameras(),
+        login,
+        password,
+        debug=debug_mode(),
+    ) as archive_dir:
+        args.archive_dir = archive_dir
+        return _run(args, parser)
+
+
+def _run(args, parser):
     if not args.archive_dir.is_dir():
         parser.error(f"archive directory not found: {args.archive_dir}")
     if args.start_offset_ms < 0:

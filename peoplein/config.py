@@ -1,11 +1,33 @@
 """Project configuration."""
 
+import os
 import tomllib
 from pathlib import Path
+from urllib.parse import urlsplit
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 CONFIG_PATH = PROJECT_DIR / "config.toml"
 DATABASE_PATH = PROJECT_DIR / "data" / "read_files.sqlite3"
+ARCHIVE_ENV_KEYS = {
+    "ARCHIVE_BASE_URL", "ARCHIVE_LOGIN", "ARCHIVE_PASSWORD",
+}
+
+
+def _load_archive_env(path):
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        key, separator, value = line.partition("=")
+        key = key.strip()
+        if not separator or key not in ARCHIVE_ENV_KEYS or key in os.environ:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        os.environ[key] = value
+
+
+_load_archive_env(PROJECT_DIR / ".env")
 
 
 def _settings(config_path=CONFIG_PATH):
@@ -49,6 +71,28 @@ def archive_dir(config_path=CONFIG_PATH):
     ):
         raise ValueError("config archive_dir must be a resource directory name")
     return PROJECT_DIR / "resources" / value
+
+
+def archive_server():
+    """Return the optional remote archive and its Basic Auth credentials."""
+    base_url = os.getenv("ARCHIVE_BASE_URL", "").strip()
+    login = os.getenv("ARCHIVE_LOGIN", "")
+    password = os.getenv("ARCHIVE_PASSWORD", "")
+    if not base_url:
+        return None
+    parsed = urlsplit(base_url)
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.netloc
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(
+            "ARCHIVE_BASE_URL must be an HTTP(S) URL without credentials"
+        )
+    return base_url.rstrip("/"), login, password
 
 
 def stream_cameras(config_path=CONFIG_PATH):

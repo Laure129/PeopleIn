@@ -6,15 +6,83 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from peoplein.config import stream_cameras
+from peoplein.config import _load_archive_env, archive_server, stream_cameras
 from peoplein.run import (
     _reference_events, _reference_interval, occupancy_exact_match_pct,
 )
-from peoplein.stream import _decode_camera, common_archive_interval
+from peoplein.stream import (
+    _decode_camera, common_archive_interval, remote_archive,
+)
 from peoplein.sync import PlaybackClock
 
 
 class ArchiveRunTest(unittest.TestCase):
+    def test_archive_server_loads_env_file_without_overriding_process(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+            "os.environ", {"ARCHIVE_LOGIN": "process-user"}, clear=True,
+        ):
+            env_path = Path(directory) / ".env"
+            env_path.write_text(
+                "ARCHIVE_BASE_URL=https://archive.test/root\n"
+                "ARCHIVE_LOGIN=file-user\n"
+                "ARCHIVE_PASSWORD='secret value'\n",
+                encoding="utf-8",
+            )
+
+            _load_archive_env(env_path)
+
+            self.assertEqual(archive_server(), (
+                "https://archive.test/root", "process-user", "secret value",
+            ))
+
+    def test_remote_archive_cleanup_and_debug_cache(self):
+        class Response(io.BytesIO):
+            def __init__(self, body):
+                super().__init__(body)
+                self.headers = {"Content-Length": str(len(body))}
+
+        requests = []
+
+        def open_url(request, timeout):
+            requests.append(request)
+            if request.full_url.endswith("/"):
+                return Response(b'<a href="20260101-000000.mkv">video</a>')
+            return Response(b"mkv")
+
+        with tempfile.TemporaryDirectory() as directory, patch(
+            "peoplein.stream.PROJECT_DIR", Path(directory),
+        ), patch("peoplein.stream.urlopen", side_effect=open_url):
+            with remote_archive(
+                "http://archive.test/root",
+                ("entrance", "loby"),
+                "user",
+                "secret",
+            ) as archive:
+                temporary_archive = archive
+                self.assertEqual(
+                    sorted(path.name for path in archive.glob("*/*.mkv")),
+                    ["20260101-000000.mkv", "20260101-000000.mkv"],
+                )
+            self.assertFalse(temporary_archive.exists())
+
+            with remote_archive(
+                "http://archive.test/root",
+                ("entrance", "loby"),
+                "user",
+                "secret",
+                debug=True,
+            ) as debug_archive:
+                pass
+            self.assertTrue(debug_archive.is_dir())
+            self.assertTrue(
+                debug_archive.name.startswith("archive_debug_cache_remote-")
+            )
+
+        self.assertTrue(all(
+            request.get_header("Authorization") == "Basic dXNlcjpzZWNyZXQ="
+            for request in requests
+        ))
+
     @patch("peoplein.stream._video_info")
     def test_common_archive_and_reference_interval(self, video_info):
         video_info.side_effect = [

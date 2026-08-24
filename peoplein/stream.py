@@ -1,19 +1,26 @@
 """Decode synchronized raw BGR frames from a local MKV archive."""
 
+import base64
 import json
 import logging
+import re
+import shutil
 import subprocess
+import tempfile
 import threading
 from bisect import bisect_right
 from collections import defaultdict
-from datetime import datetime, timedelta
+from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 from fractions import Fraction
 from pathlib import Path
+from urllib.parse import quote, unquote, urljoin, urlparse
+from urllib.request import Request, urlopen
 
 import numpy as np
 
 from .config import (
-    DATABASE_PATH, debug_mode, frame_interval_ms,
+    DATABASE_PATH, PROJECT_DIR, debug_mode, frame_interval_ms,
 )
 from .database import ensure_unread, mark_read
 from .sync import capture_needs_resync
@@ -22,6 +29,90 @@ FRAME_WIDTH = 640
 FRAME_HEIGHT = 360
 SEGMENT_SECONDS = 305
 log = logging.getLogger(__name__)
+_HREF_RE = re.compile(r'<a\s+[^>]*href=["\']([^"\']+)["\']', re.IGNORECASE)
+
+
+def _archive_request(url, login, password):
+    headers = {"User-Agent": "PeopleIn/1.0"}
+    if login or password:
+        token = base64.b64encode(
+            f"{login}:{password}".encode("utf-8")
+        ).decode("ascii")
+        headers["Authorization"] = f"Basic {token}"
+    return Request(url, headers=headers)
+
+
+def _remote_mkv_names(camera_url, login, password):
+    with urlopen(
+        _archive_request(camera_url, login, password), timeout=15,
+    ) as response:
+        html = response.read().decode("utf-8", "replace")
+    names = set()
+    for href in _HREF_RE.findall(html):
+        name = unquote(urlparse(href).path.rstrip("/").rsplit("/", 1)[-1])
+        try:
+            datetime.strptime(Path(name).stem, "%Y%m%d-%H%M%S")
+        except ValueError:
+            continue
+        if Path(name).name == name and name.endswith(".mkv"):
+            names.add(name)
+    return sorted(names)
+
+
+def _download_mkv(url, destination, login, password):
+    temporary = destination.with_suffix(".mkv.part")
+    try:
+        with urlopen(
+            _archive_request(url, login, password), timeout=60,
+        ) as response, temporary.open("wb") as output:
+            expected_size = response.headers.get("Content-Length")
+            shutil.copyfileobj(response, output, length=1024 * 1024)
+        size = temporary.stat().st_size
+        if not size or expected_size and size != int(expected_size):
+            raise IOError(
+                f"incomplete download {destination.name}: "
+                f"expected {expected_size or 'non-empty'}, got {size} bytes"
+            )
+        temporary.replace(destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+@contextmanager
+def remote_archive(base_url, cameras, login="", password="", debug=False):
+    """Download a remote archive once and clean it unless debug is enabled."""
+    temporary = None
+    if debug:
+        resources = PROJECT_DIR / "resources"
+        resources.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        archive_dir = Path(tempfile.mkdtemp(
+            prefix=f"archive_debug_cache_remote-{stamp}-",
+            dir=resources,
+        ))
+    else:
+        temporary = tempfile.TemporaryDirectory(prefix="peoplein-archive-")
+        archive_dir = Path(temporary.name)
+
+    try:
+        for camera in cameras:
+            camera_url = f"{base_url.rstrip('/')}/{quote(camera, safe='')}/"
+            names = _remote_mkv_names(camera_url, login, password)
+            if not names:
+                raise ValueError(f"remote camera archive is empty: {camera}")
+            camera_dir = archive_dir / camera
+            camera_dir.mkdir()
+            for name in names:
+                _download_mkv(
+                    urljoin(camera_url, quote(name, safe="")),
+                    camera_dir / name,
+                    login,
+                    password,
+                )
+        yield archive_dir
+    finally:
+        if temporary is not None:
+            temporary.cleanup()
 
 
 def _mkv_files(camera_dir):
