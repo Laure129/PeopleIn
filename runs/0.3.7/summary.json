@@ -1,0 +1,78 @@
+{
+  "format_version": 1,
+  "app_version": "0.3.7",
+  "run": {
+    "source_archive": "resources/archive_short",
+    "start_time": "2026-07-13T23:57:00.400",
+    "time_zone": null,
+    "video_duration_seconds": 123.64,
+    "processing_time_seconds": 15.276
+  },
+  "result": {
+    "entered_total": 3,
+    "exited_total": 0,
+    "people_inside": 3,
+    "passage_confirmation_ratio": 1.0
+  },
+  "motion_activity_intervals": [
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:13.720",
+      "end": "2026-07-13T23:57:13.720"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:20.040",
+      "end": "2026-07-13T23:57:20.040"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:58.680",
+      "end": "2026-07-13T23:58:01.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:55.960",
+      "end": "2026-07-13T23:58:57.960"
+    }
+  ],
+  "passages": [
+    {
+      "timestamp": "2026-07-13T23:57:20.360",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:57:20.040",
+        "delta_seconds": 0.32
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:01.320",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:01.000",
+        "delta_seconds": 0.32
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:56.960",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:56.280",
+        "delta_seconds": 0.68
+      }
+    }
+  ],
+  "artifacts": {
+    "log": "run.log",
+    "diagnostics": "diagnostics.jsonl",
+    "evidence": "evidence",
+    "config": "config.toml"
+  },
+  "command": "/usr/local/bin/python -m peoplein.run"
+}

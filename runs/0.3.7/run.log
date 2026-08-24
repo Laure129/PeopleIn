@@ -1,0 +1,5 @@
+2026-08-24 13:46:31,595 INFO __main__: run started cameras=entrance,loby archive=/app/resources/archive_short reference=disabled
+2026-08-24 13:46:42,170 INFO peoplein.stream: decoded loby/20260713-235327.mkv: 261 frames
+2026-08-24 13:46:46,804 INFO peoplein.stream: decoded entrance/20260713-235604.mkv: 372 frames
+2026-08-24 13:46:46,825 INFO peoplein.stream: decoded loby/20260713-235827.mkv: 111 frames
+2026-08-24 13:46:46,872 INFO __main__: run completed seconds=124 frames=744 ticks=372 max_skew_ms=40 occupancy_exact_match_pct=None video_duration_seconds=123.64 processing_time_seconds=15.276 people_inside=3 passage_confirmation_ratio=1.0
