@@ -1,0 +1,95 @@
+{
+  "format_version": 1,
+  "app_version": "0.3.12",
+  "run": {
+    "source_archive": "resources/archive_debug_cache",
+    "start_time": "2026-07-13T23:56:04.000",
+    "time_zone": null,
+    "video_duration_seconds": 443.0,
+    "processing_time_seconds": 65.546,
+    "reference_telemetry": "resources/archive_people_telemetry.jsonl"
+  },
+  "result": {
+    "entered_total": 4,
+    "exited_total": 0,
+    "people_inside": 4,
+    "passage_confirmation_ratio": 1.0,
+    "occupancy_exact_match_pct": 99.774266
+  },
+  "motion_activity_intervals": [
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:13.200",
+      "end": "2026-07-13T23:57:13.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:17.200",
+      "end": "2026-07-13T23:57:19.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:58.200",
+      "end": "2026-07-13T23:58:03.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:53.600",
+      "end": "2026-07-13T23:58:58.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:59:39.800",
+      "end": "2026-07-13T23:59:40.400"
+    }
+  ],
+  "passages": [
+    {
+      "timestamp": "2026-07-13T23:57:20.200",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:57:19.800",
+        "delta_seconds": 0.4
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:01.000",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:01.000",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:56.800",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:56.400",
+        "delta_seconds": 0.4
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:58.800",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:58.400",
+        "delta_seconds": 0.4
+      }
+    }
+  ],
+  "artifacts": {
+    "log": "run.log",
+    "diagnostics": "diagnostics.jsonl",
+    "evidence": "evidence",
+    "config": "config.toml"
+  },
+  "command": "/home/codex/.cache/uv/builds-v0/.tmpmGml7F/bin/python -m peoplein.run --compare-reference"
+}
