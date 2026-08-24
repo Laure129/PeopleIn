@@ -5,7 +5,7 @@ import math
 import time
 from collections import deque
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import cv2
@@ -15,6 +15,7 @@ from .database import record_passage
 
 DIAGNOSTIC_CONFIDENCE = 0.01
 MOTION_ACTIVITY_GAP_SECONDS = 3
+PERSON_ANALYSIS_WINDOW_SECONDS = 5
 
 
 class PersonDetector:
@@ -140,6 +141,9 @@ class DoorCounter:
         self.next_track_id = 1
         self.events = []
         self.motion_activity = []
+        self.pending_frames = {
+            camera: deque() for camera in cameras
+        }
         self.frame_history = {
             camera: deque(maxlen=7) for camera in cameras
         }
@@ -166,11 +170,9 @@ class DoorCounter:
             self.diagnostics = path.open("x", encoding="utf-8")
 
     def update(self, camera, frame, timestamp):
-        self._expire_events(timestamp)
         geometry = self.cameras[camera]
-        line = geometry["line"]
-        started = time.monotonic()
         if camera in self.motion:
+            started = time.monotonic()
             motion_points, flow_vectors = self._motion_flow(camera, frame)
             inference_ms = round((time.monotonic() - started) * 1000, 3)
             self._diagnostic(
@@ -178,7 +180,7 @@ class DoorCounter:
                 inference_ms=inference_ms,
                 motion_points=motion_points,
             )
-            self.frame_history[camera].append((
+            self.pending_frames[camera].append((
                 frame.copy(), timestamp, flow_vectors,
             ))
             if motion_points >= geometry["motion_min_points"]:
@@ -196,9 +198,47 @@ class DoorCounter:
                         self.motion_activity_dir,
                     )
                 self._match_motion(timestamp)
-            self._save_ready_evidence(timestamp)
+            self._flush_frames(timestamp)
             return
 
+        if self.motion:
+            self.pending_frames[camera].append((frame.copy(), timestamp, []))
+            self._flush_frames(timestamp)
+            return
+
+        self._expire_events(timestamp)
+        self._analyze_people(camera, frame, timestamp)
+
+    def _flush_frames(self, current_time, force=False):
+        cutoff = current_time - timedelta(
+            seconds=PERSON_ANALYSIS_WINDOW_SECONDS
+        )
+        ready = []
+        for order, (camera, frames) in enumerate(self.pending_frames.items()):
+            while frames and (force or frames[0][1] < cutoff):
+                frame, timestamp, labels = frames.popleft()
+                ready.append((timestamp, order, camera, frame, labels))
+
+        for timestamp, _, camera, frame, labels in sorted(ready):
+            self._expire_events(timestamp)
+            if camera in self.motion:
+                self.frame_history[camera].append((frame, timestamp, labels))
+                self._save_ready_evidence(timestamp)
+            elif any(
+                abs((timestamp - activity["timestamp"]).total_seconds())
+                <= PERSON_ANALYSIS_WINDOW_SECONDS
+                for activity in self.motion_activity
+            ):
+                self._analyze_people(camera, frame, timestamp)
+            else:
+                self.tracks[camera].clear()
+                self.frame_history[camera].append((frame, timestamp, []))
+                self._save_ready_evidence(timestamp)
+
+    def _analyze_people(self, camera, frame, timestamp):
+        geometry = self.cameras[camera]
+        line = geometry["line"]
+        started = time.monotonic()
         raw_detections = [
             (bbox, score) for bbox, score in self.detector(frame)
             if score >= DIAGNOSTIC_CONFIDENCE
@@ -494,6 +534,7 @@ class DoorCounter:
                 (event["timestamp"] - candidate["timestamp"]).total_seconds()
             )
             event["confirmed"] = True
+            event["confirmed_at"] = timestamp
             event["motion_candidate"] = candidate
             observation = event["observations"][0]
             self._diagnostic(
@@ -681,16 +722,29 @@ class DoorCounter:
         return value.isoformat(sep=" ", timespec="milliseconds")
 
     def snapshot(self, timestamp=None):
-        entered = sum(event["direction"] == "entry" for event in self.events)
-        exited = sum(event["direction"] == "exit" for event in self.events)
-        confirmed = sum(event["confirmed"] for event in self.events)
+        events = (
+            self.events if timestamp is None else [
+                event for event in self.events
+                if event["timestamp"] < timestamp + timedelta(seconds=1)
+            ]
+        )
+        entered = sum(event["direction"] == "entry" for event in events)
+        exited = sum(event["direction"] == "exit" for event in events)
+        confirmed = sum(
+            event["confirmed"] and (
+                timestamp is None
+                or event.get("confirmed_at", event["timestamp"])
+                < timestamp + timedelta(seconds=1)
+            )
+            for event in events
+        )
         result = {
             "entered_total": entered,
             "exited_total": exited,
             "people_inside": max(entered - exited, 0),
             "passage_confirmation_ratio": (
-                round(confirmed / len(self.events), 6)
-                if self.events else None
+                round(confirmed / len(events), 6)
+                if events else None
             ),
         }
         if timestamp is not None:
@@ -755,6 +809,8 @@ class DoorCounter:
         }
 
     def finish(self, timestamp):
+        if self.motion:
+            self._flush_frames(timestamp, force=True)
         self._expire_events(timestamp, force=True)
         self._save_ready_evidence(timestamp, force=True)
 

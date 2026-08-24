@@ -1,0 +1,6 @@
+2026-08-24 17:53:19,729 INFO __main__: run started cameras=entrance,loby archive=/home/codex/PeopleIn/resources/archive_debug_cache reference=/home/codex/PeopleIn/resources/archive_people_telemetry.jsonl
+2026-08-24 17:53:36,628 INFO peoplein.stream: decoded loby/20260713-235327.mkv: 715 frames
+2026-08-24 17:53:49,549 INFO peoplein.stream: decoded entrance/20260713-235604.mkv: 1500 frames
+2026-08-24 17:53:59,364 INFO peoplein.stream: decoded loby/20260713-235827.mkv: 1500 frames
+2026-08-24 17:53:59,375 INFO peoplein.stream: decoded entrance/20260714-000104.mkv: 715 frames
+2026-08-24 17:53:59,389 INFO __main__: run completed seconds=443 frames=4430 ticks=2215 max_skew_ms=0 occupancy_exact_match_pct=99.774266 video_duration_seconds=443.0 processing_time_seconds=39.659 people_inside=4 passage_confirmation_ratio=1.0

@@ -232,12 +232,6 @@ def main():
                 expected_time = clock.expected_archive_time
                 second = int((expected_time - start_time).total_seconds())
                 if second != current_second:
-                    row = _telemetry_record(
-                        start_time + timedelta(seconds=current_second),
-                        counter,
-                    )
-                    output.write(json.dumps(row, ensure_ascii=False) + "\n")
-                    telemetry.append(row)
                     current_second = second
 
                 stats = {}
@@ -267,11 +261,12 @@ def main():
                 clock.advance()
 
             counter.finish(end_time)
-            row = _telemetry_record(
-                start_time + timedelta(seconds=current_second), counter,
-            )
-            output.write(json.dumps(row, ensure_ascii=False) + "\n")
-            telemetry.append(row)
+            for second in range(current_second + 1):
+                row = _telemetry_record(
+                    start_time + timedelta(seconds=second), counter,
+                )
+                output.write(json.dumps(row, ensure_ascii=False) + "\n")
+                telemetry.append(row)
 
         for thread in threads:
             thread.join()

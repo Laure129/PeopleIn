@@ -27,6 +27,15 @@ class ScoredDetector:
         return next(self.detections)
 
 
+class RecordingDetector:
+    def __init__(self):
+        self.frames = []
+
+    def __call__(self, frame):
+        self.frames.append(int(frame[0, 0, 0]))
+        return []
+
+
 class DoorCounterTest(unittest.TestCase):
     def test_track_leaving_door_line_counts_as_crossing(self):
         counter = DoorCounter.__new__(DoorCounter)
@@ -42,6 +51,32 @@ class DoorCounterTest(unittest.TestCase):
                     counter._move_track(track, (x, 10), line, margin=1),
                     expected,
                 )
+
+    def test_snapshot_uses_archive_timestamp(self):
+        started = datetime(2026, 1, 2)
+        counter = DoorCounter.__new__(DoorCounter)
+        counter.events = [{
+            "timestamp": started + timedelta(seconds=5, milliseconds=200),
+            "direction": "entry",
+            "confirmed": True,
+            "confirmed_at": started + timedelta(seconds=20, milliseconds=200),
+        }]
+        counter.diagnostics = None
+
+        self.assertEqual(
+            counter.snapshot(started + timedelta(seconds=4))["entered_total"],
+            0,
+        )
+        self.assertEqual(
+            counter.snapshot(started + timedelta(seconds=5))["entered_total"],
+            1,
+        )
+        self.assertEqual(
+            counter.snapshot(started + timedelta(seconds=5))[
+                "passage_confirmation_ratio"
+            ],
+            0.0,
+        )
 
     def test_reference_evidence_saves_misses_without_duplicates(self):
         directions = {
@@ -231,9 +266,7 @@ class DoorCounterTest(unittest.TestCase):
                 timestamp = started + timedelta(seconds=tick)
                 counter.update("entrance", entrance_frame, timestamp)
                 counter.update("loby", motion_frames[tick], timestamp)
-            self.assertIsNone(
-                counter.diagnostic_summary()["passages"][0]["confirmation"]
-            )
+            self.assertEqual(counter.diagnostic_summary()["passages"], [])
             counter.finish(started + timedelta(seconds=20))
             self.assertEqual(counter.snapshot(), {
                 "entered_total": 1,
@@ -299,6 +332,52 @@ class DoorCounterTest(unittest.TestCase):
                     },
                 }],
             })
+
+    def test_people_are_analyzed_only_within_five_seconds_of_motion(self):
+        directions = {
+            "left_to_right": "entry",
+            "right_to_left": "exit",
+        }
+        cameras = {
+            "entrance": {
+                "line": ((0, 0), (0, 20)),
+                "directions": directions,
+            },
+            "loby": {
+                "line": ((0, 0), (0, 20)),
+                "directions": directions,
+                "motion_roi": ((0, 0), (19, 19)),
+                "motion_band_width_px": 5,
+                "motion_min_points": 1,
+                "motion_min_displacement_px": 1,
+            },
+        }
+        detector = RecordingDetector()
+        frame = np.zeros((20, 20, 3), dtype=np.uint8)
+        started = datetime(2026, 1, 2)
+
+        with tempfile.TemporaryDirectory() as directory:
+            counter = DoorCounter(
+                cameras=cameras,
+                model_path="unused",
+                confidence=0.35,
+                agreement_seconds=15,
+                crossing_margin_px=1,
+                database_path=Path(directory) / "people.sqlite3",
+                app_version="test",
+                detector=detector,
+            )
+            counter._motion_flow = lambda _camera, image: (
+                (1, []) if image[0, 0, 0] == 6 else (0, [])
+            )
+            for second in range(13):
+                timestamp = started + timedelta(seconds=second)
+                marked = np.full_like(frame, second)
+                counter.update("entrance", marked, timestamp)
+                counter.update("loby", marked, timestamp)
+            counter.finish(started + timedelta(seconds=13))
+
+        self.assertEqual(detector.frames, list(range(1, 12)))
 
     def test_motion_activity_merges_only_gaps_under_three_seconds(self):
         started = datetime(2026, 1, 2, 3, 4, 5)
