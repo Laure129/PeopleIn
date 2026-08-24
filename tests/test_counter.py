@@ -56,9 +56,9 @@ class DoorCounterTest(unittest.TestCase):
             for camera in ("entrance", "loby")
         }
         boxes = []
-        for tick in range(10):
+        for tick in range(11):
             boxes.extend((
-                [(-12 if tick < 3 else 8, 0, 4, 10)],
+                [(-12 if tick < 7 else 8, 0, 4, 10)],
                 [],
             ))
         frame = np.zeros((20, 20, 3), dtype=np.uint8)
@@ -79,23 +79,23 @@ class DoorCounterTest(unittest.TestCase):
                 reference_events=[
                     {
                         "id": "entry_1",
-                        "timestamp": started + timedelta(seconds=3),
+                        "timestamp": started + timedelta(milliseconds=600),
                         "direction": "entry",
                     },
                     {
                         "id": "entry_2",
-                        "timestamp": started + timedelta(seconds=3),
+                        "timestamp": started + timedelta(milliseconds=600),
                         "direction": "entry",
                     },
                     {
                         "id": "exit_1",
-                        "timestamp": started + timedelta(seconds=6),
+                        "timestamp": started + timedelta(milliseconds=800),
                         "direction": "exit",
                     },
                 ],
             )
-            for tick in range(10):
-                timestamp = started + timedelta(seconds=tick)
+            for tick in range(11):
+                timestamp = started + timedelta(milliseconds=200 * tick)
                 for camera in cameras:
                     counter.update(camera, frame, timestamp)
 

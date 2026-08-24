@@ -145,7 +145,7 @@ class DoorCounter:
         self.pending_evidence = [
             (
                 "reference", event["id"], event["timestamp"],
-                tuple(self.cameras), event["direction"],
+                tuple(self.cameras), event["direction"], None,
             )
             for event in reference_events
         ]
@@ -182,7 +182,7 @@ class DoorCounter:
                     "motion_points": motion_points,
                 })
                 self._match_motion(timestamp)
-            self._save_ready_evidence()
+            self._save_ready_evidence(timestamp)
             return
 
         raw_detections = [
@@ -278,7 +278,7 @@ class DoorCounter:
                 timestamp, camera, direction, track_id, foot,
                 previous_side, side,
             )
-        self._save_ready_evidence()
+        self._save_ready_evidence(timestamp)
 
     def _motion_flow(self, camera, frame):
         geometry = self.cameras[camera]
@@ -453,7 +453,7 @@ class DoorCounter:
         if self.evidence_dir:
             self.pending_evidence.append((
                 "passage", observation_id, timestamp, tuple(self.cameras),
-                direction,
+                direction, None,
             ))
 
     def _match_motion(self, timestamp, force=False):
@@ -510,20 +510,26 @@ class DoorCounter:
             )
             event["unconfirmed_logged"] = True
 
-    def _save_ready_evidence(self):
+    def _save_ready_evidence(self, current_time, force=False):
         pending = []
-        for kind, event_id, timestamp, cameras, direction \
+        for kind, event_id, timestamp, cameras, direction, windows \
                 in self.pending_evidence:
-            windows = {
-                camera: self._evidence_window(camera, timestamp)
-                for camera in cameras
-            }
+            if windows is None:
+                windows = {
+                    camera: self._evidence_window(camera, timestamp)
+                    for camera in cameras
+                }
             if any(window is None for window in windows.values()):
                 pending.append((
-                    kind, event_id, timestamp, cameras, direction,
+                    kind, event_id, timestamp, cameras, direction, None,
                 ))
                 continue
             if kind == "reference":
+                if not force and (current_time - timestamp).total_seconds() < 1:
+                    pending.append((
+                        kind, event_id, timestamp, cameras, direction, windows,
+                    ))
+                    continue
                 matches = [
                     event for event in self.events
                     if event["direction"] == direction
@@ -735,6 +741,7 @@ class DoorCounter:
 
     def finish(self, timestamp):
         self._expire_events(timestamp, force=True)
+        self._save_ready_evidence(timestamp, force=True)
 
     def close(self):
         if self.diagnostics:
