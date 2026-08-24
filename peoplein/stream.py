@@ -62,6 +62,42 @@ def _video_info(path):
     return fps, frame_count, start_pts
 
 
+def common_archive_interval(archive_dir, cameras):
+    """Return the longest exact interval covered by every selected camera."""
+    common = None
+    for camera in cameras:
+        camera_dir = Path(archive_dir) / camera
+        files = _mkv_files(camera_dir)
+        if not files:
+            raise ValueError(f"camera archive is empty: {camera_dir}")
+        ranges = []
+        for item in files:
+            fps, frame_count, start_pts = _video_info(
+                camera_dir / item["name"]
+            )
+            start = item["timestamp"] + timedelta(seconds=start_pts)
+            ranges.append((
+                start,
+                start + timedelta(seconds=frame_count / fps),
+            ))
+        merged = []
+        for start, end in sorted(ranges):
+            if merged and start <= merged[-1][1]:
+                merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+            else:
+                merged.append((start, end))
+        common = merged if common is None else [
+            (max(left_start, right_start), min(left_end, right_end))
+            for left_start, left_end in common
+            for right_start, right_end in merged
+            if max(left_start, right_start) < min(left_end, right_end)
+        ]
+
+    if not common:
+        raise ValueError("selected camera archives do not overlap")
+    return max(common, key=lambda interval: interval[1] - interval[0])
+
+
 def build_archive_plan(
     archive_dir, start_time, end_time, cameras, interval_ms=None,
 ):

@@ -20,7 +20,8 @@ from .config import (
 from .counter import DoorCounter
 from .prepare_benchmark import prepare_benchmark
 from .stream import (
-    FRAME_HEIGHT, FRAME_WIDTH, FrameStore, build_archive_plan, start_decoders,
+    FRAME_HEIGHT, FRAME_WIDTH, FrameStore, build_archive_plan,
+    common_archive_interval, start_decoders,
 )
 from .sync import PlaybackClock, archive_skew_ms, capture_needs_resync
 
@@ -43,18 +44,17 @@ def occupancy_exact_match_pct(telemetry, reference_path):
             if line.strip()
         )
     }
-    missing = [
-        row["mkv_pts_time"]
-        for row in telemetry
-        if row["mkv_pts_time"] not in reference
+    comparable = [
+        row for row in telemetry
+        if row["mkv_pts_time"] in reference
     ]
-    if missing:
-        raise ValueError(f"reference telemetry has no timestamp {missing[0]}")
+    if not comparable:
+        raise ValueError("telemetry does not overlap the reference")
     matches = sum(
         row["people_inside"] == reference[row["mkv_pts_time"]]
-        for row in telemetry
+        for row in comparable
     )
-    return round(matches / len(telemetry) * 100, 6)
+    return round(matches / len(comparable) * 100, 6)
 
 
 def _reference_telemetry_path(archive_dir):
@@ -66,6 +66,28 @@ def _reference_telemetry_path(archive_dir):
             f"no reference telemetry configured for {archive_name}"
         ) from error
     return PROJECT_DIR / "resources" / filename
+
+
+def _reference_interval(reference_path, available_start, available_end):
+    timestamps = [
+        datetime.fromisoformat(row["mkv_pts_time"])
+        for row in (
+            json.loads(line)
+            for line in Path(reference_path).read_text(
+                encoding="utf-8"
+            ).splitlines()
+            if line.strip()
+        )
+    ]
+    timestamps.sort()
+    timestamps = [
+        timestamp for timestamp in timestamps
+        if timestamp >= available_start
+        and timestamp + timedelta(seconds=1) <= available_end
+    ]
+    if not timestamps:
+        raise ValueError("reference telemetry does not overlap the archive")
+    return timestamps[0], timestamps[-1] + timedelta(seconds=1)
 
 
 def _telemetry_record(timestamp, counter):
@@ -81,18 +103,22 @@ def main():
         "--archive-dir", type=Path,
         default=configured_archive_dir(),
     )
-    parser.add_argument("--start-time", type=datetime.fromisoformat, required=True)
-    parser.add_argument("--duration", type=int, default=1)
+    parser.add_argument("--compare-reference", action="store_true")
     args = parser.parse_args()
-    if args.duration <= 0:
-        parser.error("--duration must be greater than zero")
     if not args.archive_dir.is_dir():
         parser.error(f"archive directory not found: {args.archive_dir}")
 
     cameras = stream_cameras()
-    reference_path = _reference_telemetry_path(args.archive_dir)
-    if not reference_path.is_file():
-        parser.error(f"reference telemetry not found: {reference_path}")
+    start_time, end_time = common_archive_interval(args.archive_dir, cameras)
+    reference_path = None
+    if args.compare_reference:
+        reference_path = _reference_telemetry_path(args.archive_dir)
+        if not reference_path.is_file():
+            parser.error(f"reference telemetry not found: {reference_path}")
+        start_time, end_time = _reference_interval(
+            reference_path, start_time, end_time,
+        )
+    duration = (end_time - start_time).total_seconds()
 
     run_dir = PROJECT_DIR / "runs" / __version__
     telemetry_path = run_dir / "telemetry.jsonl"
@@ -139,7 +165,7 @@ def main():
     )
     log.info(
         "run started cameras=%s archive=%s reference=%s",
-        ",".join(cameras), args.archive_dir, reference_path,
+        ",".join(cameras), args.archive_dir, reference_path or "disabled",
     )
     started = time.monotonic()
 
@@ -147,8 +173,8 @@ def main():
         interval_ms = frame_interval_ms()
         plan = build_archive_plan(
             args.archive_dir,
-            args.start_time,
-            args.start_time + timedelta(seconds=args.duration),
+            start_time,
+            end_time,
             cameras,
             interval_ms,
         )
@@ -159,7 +185,7 @@ def main():
         )
         store = FrameStore(counts)
         threads = start_decoders(args.archive_dir, plan, store)
-        clock = PlaybackClock(args.start_time, interval_ms)
+        clock = PlaybackClock(start_time, interval_ms)
         decoded = 0
         max_skew = 0
         current_second = 0
@@ -168,10 +194,10 @@ def main():
         with telemetry_path.open("x", encoding="utf-8") as output:
             for tick in range(len(plan[cameras[0]])):
                 expected_time = clock.expected_archive_time
-                second = int((expected_time - args.start_time).total_seconds())
+                second = int((expected_time - start_time).total_seconds())
                 if second != current_second:
                     row = _telemetry_record(
-                        args.start_time + timedelta(seconds=current_second),
+                        start_time + timedelta(seconds=current_second),
                         counter,
                     )
                     output.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -204,9 +230,9 @@ def main():
                 max_skew = max(max_skew, skew)
                 clock.advance()
 
-            counter.finish(args.start_time + timedelta(seconds=args.duration))
+            counter.finish(end_time)
             row = _telemetry_record(
-                args.start_time + timedelta(seconds=current_second), counter,
+                start_time + timedelta(seconds=current_second), counter,
             )
             output.write(json.dumps(row, ensure_ascii=False) + "\n")
             telemetry.append(row)
@@ -214,7 +240,10 @@ def main():
         for thread in threads:
             thread.join()
 
-        accuracy = occupancy_exact_match_pct(telemetry, reference_path)
+        accuracy = (
+            occupancy_exact_match_pct(telemetry, reference_path)
+            if reference_path else None
+        )
         processing_time = round(time.monotonic() - started, 3)
         archive_path = args.archive_dir.resolve()
         summary = {
@@ -226,21 +255,17 @@ def main():
                     if archive_path.is_relative_to(PROJECT_DIR)
                     else archive_path
                 ),
-                "reference_telemetry": str(
-                    reference_path.relative_to(PROJECT_DIR)
-                ),
-                "start_time": args.start_time.isoformat(
+                "start_time": start_time.isoformat(
                     timespec="milliseconds"
                 ),
                 "time_zone": (
-                    str(args.start_time.tzinfo)
-                    if args.start_time.tzinfo else None
+                    str(start_time.tzinfo)
+                    if start_time.tzinfo else None
                 ),
-                "video_duration_seconds": args.duration,
+                "video_duration_seconds": duration,
                 "processing_time_seconds": processing_time,
             },
             "result": {
-                "occupancy_exact_match_pct": accuracy,
                 "entered_total": telemetry[-1]["entered_total"],
                 "exited_total": telemetry[-1]["exited_total"],
                 "people_inside": telemetry[-1]["people_inside"],
@@ -257,17 +282,22 @@ def main():
             },
             "command": command,
         }
+        if reference_path:
+            summary["run"]["reference_telemetry"] = str(
+                reference_path.relative_to(PROJECT_DIR)
+            )
+            summary["result"]["occupancy_exact_match_pct"] = accuracy
         summary_path.write_text(
             json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
         log.info(
             "run completed seconds=%d frames=%d ticks=%d max_skew_ms=%d "
-            "occupancy_exact_match_pct=%s video_duration_seconds=%d "
+            "occupancy_exact_match_pct=%s video_duration_seconds=%s "
             "processing_time_seconds=%s people_inside=%d "
             "passage_confirmation_ratio=%s",
             len(telemetry), decoded, clock.tick, max_skew, accuracy,
-            args.duration, processing_time, telemetry[-1]["people_inside"],
+            duration, processing_time, telemetry[-1]["people_inside"],
             telemetry[-1]["passage_confirmation_ratio"],
         )
     except Exception:

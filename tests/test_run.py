@@ -7,12 +7,56 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from peoplein.config import stream_cameras
-from peoplein.run import occupancy_exact_match_pct
-from peoplein.stream import _decode_camera
+from peoplein.run import _reference_interval, occupancy_exact_match_pct
+from peoplein.stream import _decode_camera, common_archive_interval
 from peoplein.sync import PlaybackClock
 
 
 class ArchiveRunTest(unittest.TestCase):
+    @patch("peoplein.stream._video_info")
+    def test_common_archive_and_reference_interval(self, video_info):
+        video_info.side_effect = [
+            (1, 10, 0),
+            (1, 4, 2),
+            (1, 2, 0),
+        ]
+        reference = [
+            {"mkv_pts_time": "2026-01-01 00:00:02.000"},
+            {"mkv_pts_time": "2026-01-01 00:00:03.000"},
+            {"mkv_pts_time": "2026-01-01 00:00:05.000"},
+            {"mkv_pts_time": "2026-01-01 00:00:06.000"},
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / "archive"
+            entrance = archive / "entrance"
+            entrance.mkdir(parents=True)
+            (entrance / "20260101-000000.mkv").touch()
+            loby = archive / "loby"
+            loby.mkdir()
+            (loby / "20260101-000000.mkv").touch()
+            (loby / "20260101-000007.mkv").touch()
+            reference_path = Path(directory) / "reference.jsonl"
+            reference_path.write_text(
+                "".join(json.dumps(row) + "\n" for row in reference),
+                encoding="utf-8",
+            )
+
+            available = common_archive_interval(
+                archive, ("entrance", "loby"),
+            )
+
+            self.assertEqual(available, (
+                datetime(2026, 1, 1, 0, 0, 2),
+                datetime(2026, 1, 1, 0, 0, 6),
+            ))
+            self.assertEqual(
+                _reference_interval(reference_path, *available),
+                (
+                    datetime(2026, 1, 1, 0, 0, 2),
+                    datetime(2026, 1, 1, 0, 0, 6),
+                ),
+            )
+
     def test_archive_clock_advances_without_playback_settings(self):
         started = datetime(2026, 1, 1)
         clock = PlaybackClock(started, 333)
@@ -35,6 +79,7 @@ class ArchiveRunTest(unittest.TestCase):
         telemetry = [
             {"mkv_pts_time": "2026-01-01 00:00:00.000", "people_inside": 0},
             {"mkv_pts_time": "2026-01-01 00:00:01.000", "people_inside": 0},
+            {"mkv_pts_time": "2026-01-01 00:00:02.000", "people_inside": 9},
         ]
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "reference.jsonl"
