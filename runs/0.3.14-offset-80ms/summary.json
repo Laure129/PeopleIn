@@ -1,0 +1,125 @@
+{
+  "format_version": 1,
+  "app_version": "0.3.14",
+  "run": {
+    "source_archive": "resources/archive_debug_cache",
+    "start_time": "2026-07-13T23:56:04.080",
+    "start_offset_ms": 80,
+    "time_zone": null,
+    "video_duration_seconds": 442.92,
+    "processing_time_seconds": 40.129
+  },
+  "result": {
+    "entered_total": 5,
+    "exited_total": 1,
+    "people_inside": 4,
+    "passage_confirmation_ratio": 1.0
+  },
+  "motion_activity_intervals": [
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:13.080",
+      "end": "2026-07-13T23:57:13.280"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:17.480",
+      "end": "2026-07-13T23:57:19.480"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:49.080",
+      "end": "2026-07-13T23:57:50.080"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:58.080",
+      "end": "2026-07-13T23:58:03.480"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:11.880",
+      "end": "2026-07-13T23:58:11.880"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:54.280",
+      "end": "2026-07-13T23:58:59.480"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:59:39.880",
+      "end": "2026-07-13T23:59:40.280"
+    }
+  ],
+  "passages": [
+    {
+      "timestamp": "2026-07-13T23:57:20.280",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:57:19.480",
+        "delta_seconds": 0.8
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:01.080",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:00.880",
+        "delta_seconds": 0.2
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:56.880",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:56.480",
+        "delta_seconds": 0.4
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:58.880",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:58.280",
+        "delta_seconds": 0.6
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:59:40.080",
+      "direction": "exit",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:59:39.880",
+        "delta_seconds": 0.2
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:59:40.280",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:59:40.280",
+        "delta_seconds": 0.0
+      }
+    }
+  ],
+  "artifacts": {
+    "log": "run.log",
+    "diagnostics": "diagnostics.jsonl",
+    "evidence": "evidence",
+    "motion_activity": "motion_activity",
+    "config": "config.toml"
+  },
+  "command": "/home/codex/.cache/uv/builds-v0/.tmpiSOyD6/bin/python -m peoplein.run --start-offset-ms 80"
+}

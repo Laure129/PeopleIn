@@ -134,9 +134,14 @@ def main():
         default=configured_archive_dir(),
     )
     parser.add_argument("--compare-reference", action="store_true")
+    parser.add_argument("--start-offset-ms", type=int, default=0)
     args = parser.parse_args()
     if not args.archive_dir.is_dir():
         parser.error(f"archive directory not found: {args.archive_dir}")
+    if args.start_offset_ms < 0:
+        parser.error("start offset must not be negative")
+    if args.compare_reference and args.start_offset_ms:
+        parser.error("start offset cannot be used with reference comparison")
 
     cameras = stream_cameras()
     start_time, end_time = common_archive_interval(args.archive_dir, cameras)
@@ -148,9 +153,15 @@ def main():
         start_time, end_time = _reference_interval(
             reference_path, start_time, end_time,
         )
+    start_time += timedelta(milliseconds=args.start_offset_ms)
+    if start_time >= end_time:
+        parser.error("start offset leaves no archive to process")
     duration = (end_time - start_time).total_seconds()
 
-    run_dir = PROJECT_DIR / "runs" / __version__
+    run_name = __version__
+    if args.start_offset_ms:
+        run_name += f"-offset-{args.start_offset_ms}ms"
+    run_dir = PROJECT_DIR / "runs" / run_name
     telemetry_path = run_dir / "telemetry.jsonl"
     summary_path = run_dir / "summary.json"
     log_path = run_dir / "run.log"
@@ -289,6 +300,7 @@ def main():
                 "start_time": start_time.isoformat(
                     timespec="milliseconds"
                 ),
+                "start_offset_ms": args.start_offset_ms,
                 "time_zone": (
                     str(start_time.tzinfo)
                     if start_time.tzinfo else None
