@@ -1,0 +1,90 @@
+{
+  "format_version": 1,
+  "app_version": "0.3.8",
+  "run": {
+    "source_archive": "resources/archive_short",
+    "start_time": "2026-07-13T23:57:01.000",
+    "time_zone": null,
+    "video_duration_seconds": 123.0,
+    "processing_time_seconds": 14.539,
+    "reference_telemetry": "resources/archive_people_telemetry_short.jsonl"
+  },
+  "result": {
+    "entered_total": 4,
+    "exited_total": 0,
+    "people_inside": 4,
+    "passage_confirmation_ratio": 1.0,
+    "occupancy_exact_match_pct": 99.186992
+  },
+  "motion_activity_intervals": [
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:18.000",
+      "end": "2026-07-13T23:57:20.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:55.280",
+      "end": "2026-07-13T23:57:55.280"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:00.280",
+      "end": "2026-07-13T23:58:00.920"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:55.880",
+      "end": "2026-07-13T23:58:57.880"
+    }
+  ],
+  "passages": [
+    {
+      "timestamp": "2026-07-13T23:57:20.320",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:57:20.000",
+        "delta_seconds": 0.32
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:01.280",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:00.920",
+        "delta_seconds": 0.36
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:56.880",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:56.560",
+        "delta_seconds": 0.32
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:58.880",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:57.880",
+        "delta_seconds": 1.0
+      }
+    }
+  ],
+  "artifacts": {
+    "log": "run.log",
+    "diagnostics": "diagnostics.jsonl",
+    "evidence": "evidence",
+    "config": "config.toml"
+  },
+  "command": "/usr/local/bin/python -m peoplein.run --compare-reference"
+}
