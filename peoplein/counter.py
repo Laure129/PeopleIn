@@ -382,8 +382,21 @@ class DoorCounter:
                 continue
             if math.dist(start, end) < geometry["motion_min_displacement_px"]:
                 continue
+            if not self._motion_direction_allowed(start, end, geometry):
+                continue
             vectors.append((start, end))
         return len(vectors), vectors
+
+    @staticmethod
+    def _motion_direction_allowed(start, end, geometry):
+        if not geometry.get("motion_perpendicular_only", False):
+            return True
+        (x1, y1), (x2, y2) = geometry["line"]
+        motion_x, motion_y = end[0] - start[0], end[1] - start[1]
+        line_x, line_y = x2 - x1, y2 - y1
+        return abs(motion_x * line_x + motion_y * line_y) <= abs(
+            motion_x * line_y - motion_y * line_x
+        )
 
     def _track_diagnostic(
         self, timestamp, camera, track_id, bbox, score, foot, side,

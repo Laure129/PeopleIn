@@ -37,6 +37,23 @@ class RecordingDetector:
 
 
 class DoorCounterTest(unittest.TestCase):
+    def test_motion_direction_can_be_limited_to_perpendicular(self):
+        geometry = {
+            "line": ((0, 0), (0, 20)),
+            "motion_perpendicular_only": True,
+        }
+
+        self.assertTrue(DoorCounter._motion_direction_allowed(
+            (0, 0), (10, 0), geometry,
+        ))
+        self.assertFalse(DoorCounter._motion_direction_allowed(
+            (0, 0), (0, 10), geometry,
+        ))
+        geometry["motion_perpendicular_only"] = False
+        self.assertTrue(DoorCounter._motion_direction_allowed(
+            (0, 0), (0, 10), geometry,
+        ))
+
     def test_track_leaving_door_line_counts_as_crossing(self):
         counter = DoorCounter.__new__(DoorCounter)
         line = ((0, 0), (0, 20))

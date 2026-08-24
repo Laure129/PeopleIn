@@ -156,6 +156,9 @@ def door_counter_settings(config_path=CONFIG_PATH):
             band_width = values.get("motion_band_width_px")
             minimum = values.get("motion_min_points")
             displacement = values.get("motion_min_displacement_px")
+            perpendicular_only = values.get(
+                "motion_perpendicular_only", False,
+            )
             if isinstance(band_width, bool) or not isinstance(band_width, int) \
                     or band_width <= 0:
                 raise ValueError(
@@ -173,12 +176,18 @@ def door_counter_settings(config_path=CONFIG_PATH):
                     f"config camera {camera} "
                     "motion_min_displacement_px is invalid"
                 )
+            if not isinstance(perpendicular_only, bool):
+                raise ValueError(
+                    f"config camera {camera} "
+                    "motion_perpendicular_only must be true or false"
+                )
             result[camera]["motion_roi"] = tuple(
                 tuple(point) for point in motion_roi
             )
             result[camera]["motion_band_width_px"] = band_width
             result[camera]["motion_min_points"] = minimum
             result[camera]["motion_min_displacement_px"] = float(displacement)
+            result[camera]["motion_perpendicular_only"] = perpendicular_only
     return {
         "model_path": path.resolve().parent / model,
         "confidence": float(confidence),

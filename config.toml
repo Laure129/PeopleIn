@@ -39,3 +39,4 @@ motion_roi = [[220, 90], [485, 359]]
 motion_band_width_px = 30
 motion_min_points = 3
 motion_min_displacement_px = 18
+motion_perpendicular_only = true
