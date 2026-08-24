@@ -3,7 +3,7 @@
 import json
 import math
 import time
-from collections import Counter, deque
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -139,8 +139,6 @@ class DoorCounter:
         self.next_track_id = 1
         self.events = []
         self.motion_activity = []
-        self.observations = []
-        self.observations_by_camera = Counter()
         self.frame_history = {
             camera: deque(maxlen=7) for camera in cameras
         }
@@ -426,8 +424,6 @@ class DoorCounter:
             "camera": camera,
             "direction": direction,
         }
-        self.observations.append(observation)
-        self.observations_by_camera[camera] += 1
         self._diagnostic(
             "line_crossing", timestamp, camera,
             observation_id=observation_id,
@@ -631,12 +627,14 @@ class DoorCounter:
         entered = sum(event["direction"] == "entry" for event in self.events)
         exited = sum(event["direction"] == "exit" for event in self.events)
         confirmed = sum(event["confirmed"] for event in self.events)
-        confidence = confirmed / len(self.events) if self.events else 1.0
         result = {
             "entered_total": entered,
             "exited_total": exited,
             "people_inside": max(entered - exited, 0),
-            "people_inside_confidence": round(confidence, 6),
+            "passage_confirmation_ratio": (
+                round(confirmed / len(self.events), 6)
+                if self.events else None
+            ),
         }
         if timestamp is not None:
             self._diagnostic("counter_snapshot", timestamp, **result)
@@ -644,14 +642,6 @@ class DoorCounter:
 
     def diagnostic_summary(self):
         return {
-            "observations_by_camera": {
-                camera: self.observations_by_camera[camera]
-                for camera in self.cameras
-            },
-            "confirmed_passages": sum(event["confirmed"] for event in self.events),
-            "unconfirmed_passages": sum(
-                not event["confirmed"] for event in self.events
-            ),
             "motion_activity_intervals": self._motion_activity_intervals(),
             "passages": [
                 self._passage_summary(event) for event in self.events
@@ -672,12 +662,14 @@ class DoorCounter:
                     and (timestamp - previous).total_seconds()
                     < MOTION_ACTIVITY_GAP_SECONDS
                 ):
-                    result[-1]["end"] = self._timestamp(timestamp)
+                    result[-1]["end"] = timestamp.isoformat(
+                        timespec="milliseconds"
+                    )
                 else:
                     result.append({
                         "camera": camera,
-                        "start": self._timestamp(timestamp),
-                        "end": self._timestamp(timestamp),
+                        "start": timestamp.isoformat(timespec="milliseconds"),
+                        "end": timestamp.isoformat(timespec="milliseconds"),
                     })
                 previous = timestamp
         return result
@@ -686,17 +678,22 @@ class DoorCounter:
         observation = event["observations"][0]
         motion = event.get("motion_candidate")
         return {
-            "timestamp": self._timestamp(observation["timestamp"]),
+            "timestamp": observation["timestamp"].isoformat(
+                timespec="milliseconds"
+            ),
             "direction": event["direction"],
             "camera": observation["camera"],
-            "confirmed": event["confirmed"],
-            "motion_timestamp": (
-                self._timestamp(motion["timestamp"]) if motion else None
-            ),
-            "motion_delta_seconds": (
-                round(abs((observation["timestamp"] - motion["timestamp"])
-                          .total_seconds()), 3)
-                if motion else None
+            "confirmation": (
+                {
+                    "camera": motion["camera"],
+                    "timestamp": motion["timestamp"].isoformat(
+                        timespec="milliseconds"
+                    ),
+                    "delta_seconds": round(abs(
+                        (observation["timestamp"] - motion["timestamp"])
+                        .total_seconds()
+                    ), 3),
+                } if motion else None
             ),
         }
 

@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from peoplein.config import stream_cameras
-from peoplein.run import people_inside_match_pct
+from peoplein.run import occupancy_exact_match_pct
 from peoplein.stream import _decode_camera
 from peoplein.sync import PlaybackClock
 
@@ -42,7 +42,7 @@ class ArchiveRunTest(unittest.TestCase):
                 "".join(json.dumps(row) + "\n" for row in reference),
                 encoding="utf-8",
             )
-            self.assertEqual(people_inside_match_pct(telemetry, path), 50.0)
+            self.assertEqual(occupancy_exact_match_pct(telemetry, path), 50.0)
 
     @patch("peoplein.stream.FRAME_WIDTH", 1)
     @patch("peoplein.stream.FRAME_HEIGHT", 1)

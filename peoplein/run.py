@@ -12,7 +12,8 @@ from pathlib import Path
 
 from . import __version__
 from .config import (
-    DATABASE_PATH, PROJECT_DIR, archive_dir as configured_archive_dir,
+    CONFIG_PATH, DATABASE_PATH, PROJECT_DIR,
+    archive_dir as configured_archive_dir,
     debug_mode, door_counter_settings, frame_interval_ms,
     prepare_benchmark_enabled, stream_cameras,
 )
@@ -31,7 +32,7 @@ REFERENCE_TELEMETRY = {
 log = logging.getLogger(__name__)
 
 
-def people_inside_match_pct(telemetry, reference_path):
+def occupancy_exact_match_pct(telemetry, reference_path):
     if not telemetry:
         raise ValueError("telemetry is empty")
     reference = {
@@ -97,12 +98,12 @@ def main():
     telemetry_path = run_dir / "telemetry.jsonl"
     summary_path = run_dir / "summary.json"
     log_path = run_dir / "run.log"
-    command_path = run_dir / "command.txt"
+    config_snapshot_path = run_dir / "config.toml"
     diagnostics_path = run_dir / "diagnostics.jsonl"
     evidence_dir = run_dir / "evidence"
     existing = [
         path for path in (
-            telemetry_path, summary_path, log_path, command_path,
+            telemetry_path, summary_path, log_path, config_snapshot_path,
             diagnostics_path, evidence_dir,
         )
         if path.exists()
@@ -116,6 +117,7 @@ def main():
         DATABASE_PATH.unlink(missing_ok=True)
 
     run_dir.mkdir(parents=True, exist_ok=True)
+    config_snapshot_path.write_bytes(CONFIG_PATH.read_bytes())
     counter = DoorCounter(
         **door_counter_settings(),
         database_path=DATABASE_PATH,
@@ -126,7 +128,6 @@ def main():
     command = shlex.join([
         sys.executable, "-m", "peoplein.run", *sys.argv[1:],
     ])
-    command_path.write_text(command + "\n", encoding="utf-8")
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -213,22 +214,47 @@ def main():
         for thread in threads:
             thread.join()
 
-        accuracy = people_inside_match_pct(telemetry, reference_path)
+        accuracy = occupancy_exact_match_pct(telemetry, reference_path)
         processing_time = round(time.monotonic() - started, 3)
+        archive_path = args.archive_dir.resolve()
         summary = {
-            "video_duration_seconds": args.duration,
-            "processing_time_seconds": processing_time,
-            "people_inside_match_pct": accuracy,
-            "entered_total": telemetry[-1]["entered_total"],
-            "exited_total": telemetry[-1]["exited_total"],
-            "people_inside": telemetry[-1]["people_inside"],
-            "people_inside_confidence": telemetry[-1][
-                "people_inside_confidence"
-            ],
+            "format_version": 1,
+            "app_version": __version__,
+            "run": {
+                "source_archive": str(
+                    archive_path.relative_to(PROJECT_DIR)
+                    if archive_path.is_relative_to(PROJECT_DIR)
+                    else archive_path
+                ),
+                "reference_telemetry": str(
+                    reference_path.relative_to(PROJECT_DIR)
+                ),
+                "start_time": args.start_time.isoformat(
+                    timespec="milliseconds"
+                ),
+                "time_zone": (
+                    str(args.start_time.tzinfo)
+                    if args.start_time.tzinfo else None
+                ),
+                "video_duration_seconds": args.duration,
+                "processing_time_seconds": processing_time,
+            },
+            "result": {
+                "occupancy_exact_match_pct": accuracy,
+                "entered_total": telemetry[-1]["entered_total"],
+                "exited_total": telemetry[-1]["exited_total"],
+                "people_inside": telemetry[-1]["people_inside"],
+                "passage_confirmation_ratio": telemetry[-1][
+                    "passage_confirmation_ratio"
+                ],
+            },
             **counter.diagnostic_summary(),
-            "log_file": str(log_path.relative_to(PROJECT_DIR)),
-            "diagnostics_file": str(diagnostics_path.relative_to(PROJECT_DIR)),
-            "evidence_dir": str(evidence_dir.relative_to(PROJECT_DIR)),
+            "artifacts": {
+                "log": log_path.name,
+                "diagnostics": diagnostics_path.name,
+                "evidence": evidence_dir.name,
+                "config": config_snapshot_path.name,
+            },
             "command": command,
         }
         summary_path.write_text(
@@ -237,11 +263,12 @@ def main():
         )
         log.info(
             "run completed seconds=%d frames=%d ticks=%d max_skew_ms=%d "
-            "people_inside_match_pct=%s video_duration_seconds=%d "
-            "processing_time_seconds=%s people_inside=%d confidence=%s",
+            "occupancy_exact_match_pct=%s video_duration_seconds=%d "
+            "processing_time_seconds=%s people_inside=%d "
+            "passage_confirmation_ratio=%s",
             len(telemetry), decoded, clock.tick, max_skew, accuracy,
             args.duration, processing_time, telemetry[-1]["people_inside"],
-            telemetry[-1]["people_inside_confidence"],
+            telemetry[-1]["passage_confirmation_ratio"],
         )
     except Exception:
         log.exception("run failed")

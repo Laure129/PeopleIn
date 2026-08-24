@@ -182,16 +182,22 @@ class DoorCounterTest(unittest.TestCase):
                 diagnostics_path=diagnostics,
                 evidence_dir=evidence,
             )
+            self.assertIsNone(
+                counter.snapshot()["passage_confirmation_ratio"]
+            )
             for tick in range(7):
                 timestamp = started + timedelta(seconds=tick)
                 counter.update("entrance", entrance_frame, timestamp)
                 counter.update("loby", motion_frames[tick], timestamp)
+            self.assertIsNone(
+                counter.diagnostic_summary()["passages"][0]["confirmation"]
+            )
             counter.finish(started + timedelta(seconds=20))
             self.assertEqual(counter.snapshot(), {
                 "entered_total": 1,
                 "exited_total": 0,
                 "people_inside": 1,
-                "people_inside_confidence": 1.0,
+                "passage_confirmation_ratio": 1.0,
             })
             self.assertEqual(
                 {path.name for path in evidence.iterdir()},
@@ -234,21 +240,20 @@ class DoorCounterTest(unittest.TestCase):
                 "line_crossing", "passage_agreement",
             }.issubset(events))
             self.assertEqual(counter.diagnostic_summary(), {
-                "observations_by_camera": {"entrance": 1, "loby": 0},
-                "confirmed_passages": 1,
-                "unconfirmed_passages": 0,
                 "motion_activity_intervals": [{
                     "camera": "loby",
-                    "start": "2026-01-02 03:04:08.000",
-                    "end": "2026-01-02 03:04:08.000",
+                    "start": "2026-01-02T03:04:08.000",
+                    "end": "2026-01-02T03:04:08.000",
                 }],
                 "passages": [{
-                    "timestamp": "2026-01-02 03:04:08.000",
+                    "timestamp": "2026-01-02T03:04:08.000",
                     "direction": "entry",
                     "camera": "entrance",
-                    "confirmed": True,
-                    "motion_timestamp": "2026-01-02 03:04:08.000",
-                    "motion_delta_seconds": 0.0,
+                    "confirmation": {
+                        "camera": "loby",
+                        "timestamp": "2026-01-02T03:04:08.000",
+                        "delta_seconds": 0.0,
+                    },
                 }],
             })
 
@@ -264,13 +269,13 @@ class DoorCounterTest(unittest.TestCase):
         self.assertEqual(counter._motion_activity_intervals(), [
             {
                 "camera": "loby",
-                "start": "2026-01-02 03:04:05.000",
-                "end": "2026-01-02 03:04:07.000",
+                "start": "2026-01-02T03:04:05.000",
+                "end": "2026-01-02T03:04:07.000",
             },
             {
                 "camera": "loby",
-                "start": "2026-01-02 03:04:10.000",
-                "end": "2026-01-02 03:04:12.000",
+                "start": "2026-01-02T03:04:10.000",
+                "end": "2026-01-02T03:04:12.000",
             },
         ])
 
