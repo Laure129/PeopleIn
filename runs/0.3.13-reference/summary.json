@@ -6,13 +6,15 @@
     "start_time": "2026-07-13T23:56:04.000",
     "time_zone": null,
     "video_duration_seconds": 443.0,
-    "processing_time_seconds": 72.392
+    "processing_time_seconds": 67.093,
+    "reference_telemetry": "resources/archive_people_telemetry.jsonl"
   },
   "result": {
     "entered_total": 4,
     "exited_total": 0,
     "people_inside": 4,
-    "passage_confirmation_ratio": 1.0
+    "passage_confirmation_ratio": 1.0,
+    "occupancy_exact_match_pct": 99.774266
   },
   "motion_activity_intervals": [
     {
@@ -90,5 +92,5 @@
     "motion_activity": "motion_activity",
     "config": "config.toml"
   },
-  "command": "/home/codex/.cache/uv/archive-v0/V-JBhddLAvVTPfON/bin/python -m peoplein.run"
+  "command": "/home/codex/.cache/uv/builds-v0/.tmpDz0hND/bin/python -m peoplein.run --compare-reference"
 }

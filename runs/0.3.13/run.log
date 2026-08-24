@@ -1,6 +1,6 @@
-2026-08-24 16:35:38,029 INFO __main__: run started cameras=entrance,loby archive=/home/codex/PeopleIn/resources/archive_debug_cache reference=/home/codex/PeopleIn/resources/archive_people_telemetry.jsonl
-2026-08-24 16:36:03,407 INFO peoplein.stream: decoded loby/20260713-235327.mkv: 715 frames
-2026-08-24 16:36:26,278 INFO peoplein.stream: decoded entrance/20260713-235604.mkv: 1500 frames
-2026-08-24 16:36:45,064 INFO peoplein.stream: decoded entrance/20260714-000104.mkv: 715 frames
-2026-08-24 16:36:45,079 INFO peoplein.stream: decoded loby/20260713-235827.mkv: 1500 frames
-2026-08-24 16:36:45,123 INFO __main__: run completed seconds=443 frames=4430 ticks=2215 max_skew_ms=0 occupancy_exact_match_pct=99.774266 video_duration_seconds=443.0 processing_time_seconds=67.093 people_inside=4 passage_confirmation_ratio=1.0
+2026-08-24 17:25:08,074 INFO __main__: run started cameras=entrance,loby archive=/home/codex/PeopleIn/resources/archive_debug_cache reference=disabled
+2026-08-24 17:25:35,649 INFO peoplein.stream: decoded loby/20260713-235327.mkv: 715 frames
+2026-08-24 17:25:59,223 INFO peoplein.stream: decoded entrance/20260713-235604.mkv: 1500 frames
+2026-08-24 17:26:20,391 INFO peoplein.stream: decoded entrance/20260714-000104.mkv: 715 frames
+2026-08-24 17:26:20,415 INFO peoplein.stream: decoded loby/20260713-235827.mkv: 1500 frames
+2026-08-24 17:26:20,467 INFO __main__: run completed seconds=443 frames=4430 ticks=2215 max_skew_ms=0 occupancy_exact_match_pct=None video_duration_seconds=443.0 processing_time_seconds=72.392 people_inside=4 passage_confirmation_ratio=1.0
