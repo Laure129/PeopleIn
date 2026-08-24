@@ -210,6 +210,7 @@ class DoorCounterTest(unittest.TestCase):
             database = Path(directory) / "people.sqlite3"
             diagnostics = Path(directory) / "diagnostics.jsonl"
             evidence = Path(directory) / "evidence"
+            motion_activity = Path(directory) / "motion_activity"
             counter = DoorCounter(
                 cameras=cameras,
                 model_path="unused",
@@ -221,6 +222,7 @@ class DoorCounterTest(unittest.TestCase):
                 detector=ScoredDetector(detections),
                 diagnostics_path=diagnostics,
                 evidence_dir=evidence,
+                motion_activity_dir=motion_activity,
             )
             self.assertIsNone(
                 counter.snapshot()["passage_confirmation_ratio"]
@@ -246,6 +248,7 @@ class DoorCounterTest(unittest.TestCase):
                     for camera in cameras for offset in range(-3, 4)
                 },
             )
+            self.assertEqual(len(list(motion_activity.glob("*.jpg"))), 1)
             image = cv2.imread(str(
                 evidence / "passage_1_entrance_frame_+0.jpg"
             ))

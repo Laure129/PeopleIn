@@ -119,7 +119,8 @@ class DoorCounter:
     def __init__(
         self, cameras, model_path, confidence, agreement_seconds,
         crossing_margin_px, database_path, app_version, detector=None,
-        diagnostics_path=None, evidence_dir=None, reference_events=(),
+        diagnostics_path=None, evidence_dir=None, motion_activity_dir=None,
+        reference_events=(),
     ):
         self.cameras = cameras
         self.confidence = confidence
@@ -153,6 +154,11 @@ class DoorCounter:
         self.evidence_dir = Path(evidence_dir) if evidence_dir else None
         if self.evidence_dir:
             self.evidence_dir.mkdir(parents=True, exist_ok=False)
+        self.motion_activity_dir = (
+            Path(motion_activity_dir) if motion_activity_dir else None
+        )
+        if self.motion_activity_dir:
+            self.motion_activity_dir.mkdir(parents=True, exist_ok=False)
         self.diagnostics = None
         if diagnostics_path:
             path = Path(diagnostics_path)
@@ -181,6 +187,14 @@ class DoorCounter:
                     "camera": camera,
                     "motion_points": motion_points,
                 })
+                if self.motion_activity_dir:
+                    self._save_evidence_frame(
+                        "motion_activity",
+                        f"{len(self.motion_activity)}_points_{motion_points}",
+                        timestamp, camera, 0,
+                        (frame, timestamp, flow_vectors),
+                        self.motion_activity_dir,
+                    )
                 self._match_motion(timestamp)
             self._save_ready_evidence(timestamp)
             return
@@ -575,6 +589,7 @@ class DoorCounter:
 
     def _save_evidence_frame(
         self, kind, event_id, timestamp, camera, offset, snapshot,
+        directory=None,
     ):
         frame, frame_time, labels = snapshot
         annotated = frame.copy()
@@ -639,7 +654,7 @@ class DoorCounter:
             (8, 36), cv2.FONT_HERSHEY_SIMPLEX,
             0.45, (255, 255, 255), 1, cv2.LINE_AA,
         )
-        target = self.evidence_dir / (
+        target = (directory or self.evidence_dir) / (
             f"{kind}_{event_id}_{camera}_frame_{offset:+d}.jpg"
         )
         if not cv2.imwrite(str(target), annotated):
