@@ -1,0 +1,90 @@
+{
+  "format_version": 1,
+  "app_version": "0.3.15",
+  "run": {
+    "source_archive": "resources/archive_debug_cache",
+    "start_time": "2026-07-13T23:56:04.080",
+    "start_offset_ms": 80,
+    "time_zone": null,
+    "video_duration_seconds": 442.92,
+    "processing_time_seconds": 38.889
+  },
+  "result": {
+    "entered_total": 4,
+    "exited_total": 0,
+    "people_inside": 4,
+    "passage_confirmation_ratio": 1.0
+  },
+  "motion_activity_intervals": [
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:17.480",
+      "end": "2026-07-13T23:57:17.880"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:58.080",
+      "end": "2026-07-13T23:58:00.680"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:11.880",
+      "end": "2026-07-13T23:58:11.880"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:55.480",
+      "end": "2026-07-13T23:58:58.280"
+    }
+  ],
+  "passages": [
+    {
+      "timestamp": "2026-07-13T23:57:20.280",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:57:17.880",
+        "delta_seconds": 2.4
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:01.080",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:00.680",
+        "delta_seconds": 0.4
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:56.880",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:56.480",
+        "delta_seconds": 0.4
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:58.880",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:58.280",
+        "delta_seconds": 0.6
+      }
+    }
+  ],
+  "artifacts": {
+    "log": "run.log",
+    "diagnostics": "diagnostics.jsonl",
+    "evidence": "evidence",
+    "motion_activity": "motion_activity",
+    "config": "config.toml"
+  },
+  "command": "/home/codex/.cache/uv/builds-v0/.tmpbmotNs/bin/python -m peoplein.run --start-offset-ms 80"
+}

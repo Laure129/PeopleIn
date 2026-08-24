@@ -1,0 +1,85 @@
+{
+  "format_version": 1,
+  "app_version": "0.3.15",
+  "run": {
+    "source_archive": "resources/archive_debug_cache",
+    "start_time": "2026-07-13T23:56:04.040",
+    "start_offset_ms": 40,
+    "time_zone": null,
+    "video_duration_seconds": 442.96,
+    "processing_time_seconds": 37.679
+  },
+  "result": {
+    "entered_total": 4,
+    "exited_total": 0,
+    "people_inside": 4,
+    "passage_confirmation_ratio": 1.0
+  },
+  "motion_activity_intervals": [
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:17.440",
+      "end": "2026-07-13T23:57:19.840"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:58.240",
+      "end": "2026-07-13T23:58:00.840"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:55.440",
+      "end": "2026-07-13T23:58:58.240"
+    }
+  ],
+  "passages": [
+    {
+      "timestamp": "2026-07-13T23:57:20.240",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:57:19.840",
+        "delta_seconds": 0.4
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:01.040",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:00.840",
+        "delta_seconds": 0.2
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:56.840",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:56.440",
+        "delta_seconds": 0.4
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:58.640",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:58.240",
+        "delta_seconds": 0.4
+      }
+    }
+  ],
+  "artifacts": {
+    "log": "run.log",
+    "diagnostics": "diagnostics.jsonl",
+    "evidence": "evidence",
+    "motion_activity": "motion_activity",
+    "config": "config.toml"
+  },
+  "command": "/home/codex/.cache/uv/builds-v0/.tmpsuq84n/bin/python -m peoplein.run --start-offset-ms 40"
+}
