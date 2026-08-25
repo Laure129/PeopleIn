@@ -11,7 +11,7 @@ else
     set --
 fi
 echo "Starting peoplein..."
-exec podman run --rm --log-driver=passthrough "$@" \
+exec podman run --rm "$@" \
     -v "$PWD/runs:/app/runs:Z" \
     -v "$PWD/resources:/app/resources:Z" \
     peoplein
