@@ -147,9 +147,9 @@ def main():
         login,
         password,
         debug=debug_mode(),
-    ) as (archive_dir, intervals):
+    ) as (archive_dir, intervals, skipped_intervals):
         args.archive_dir = archive_dir
-        return _run(args, parser, intervals)
+        return _run(args, parser, intervals, skipped_intervals)
 
 
 def _analyze_interval(
@@ -215,7 +215,7 @@ def _analyze_interval(
     return decoded, clock.tick, max_skew
 
 
-def _run(args, parser, intervals=None):
+def _run(args, parser, intervals=None, skipped_intervals=None):
     if not args.archive_dir.is_dir():
         parser.error(f"archive directory not found: {args.archive_dir}")
     if args.start_offset_ms < 0:
@@ -224,6 +224,7 @@ def _run(args, parser, intervals=None):
         parser.error("start offset cannot be used with reference comparison")
 
     cameras = stream_cameras()
+    skipped_intervals = skipped_intervals if skipped_intervals is not None else []
     reference_path = None
     remote = intervals is not None
     if remote:
@@ -313,6 +314,7 @@ def _run(args, parser, intervals=None):
         end_time = None
         duration = 0
         offset_start = None
+        processed_intervals = []
 
         with telemetry_path.open("x", encoding="utf-8") as output:
             for batch_start, batch_end in intervals:
@@ -324,7 +326,8 @@ def _run(args, parser, intervals=None):
                 if batch_start >= batch_end:
                     continue
                 if end_time is not None and batch_start > end_time:
-                    log.warning("analysis gap interval=%s..%s", end_time, batch_start)
+                    counter.finish(end_time)
+                    counter.reset_stream()
                 if start_time is None:
                     start_time = batch_start
                 batch_decoded, batch_ticks, batch_skew = _analyze_interval(
@@ -337,18 +340,18 @@ def _run(args, parser, intervals=None):
                 max_skew = max(max_skew, batch_skew)
                 duration += (batch_end - batch_start).total_seconds()
                 end_time = batch_end
+                processed_intervals.append((batch_start, batch_end))
 
             if start_time is None:
                 raise ValueError("selected camera archives do not overlap")
             counter.finish(end_time)
-            second = 0
-            while start_time + timedelta(seconds=second) < end_time:
-                row = _telemetry_record(
-                    start_time + timedelta(seconds=second), counter,
-                )
-                output.write(json.dumps(row, ensure_ascii=False) + "\n")
-                telemetry.append(row)
-                second += 1
+            for batch_start, batch_end in processed_intervals:
+                timestamp = batch_start
+                while timestamp < batch_end:
+                    row = _telemetry_record(timestamp, counter)
+                    output.write(json.dumps(row, ensure_ascii=False) + "\n")
+                    telemetry.append(row)
+                    timestamp += timedelta(seconds=1)
 
         accuracy = (
             occupancy_exact_match_pct(telemetry, reference_path)
@@ -375,6 +378,7 @@ def _run(args, parser, intervals=None):
                 ),
                 "video_duration_seconds": duration,
                 "processing_time_seconds": processing_time,
+                "skipped_intervals": skipped_intervals,
             },
             "result": {
                 "entered_total": telemetry[-1]["entered_total"],

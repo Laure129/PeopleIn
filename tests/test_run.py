@@ -4,14 +4,15 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from peoplein.config import _load_archive_env, archive_server, stream_cameras
 from peoplein.run import (
-    _reference_events, _reference_interval, occupancy_exact_match_pct,
+    _reference_events, _reference_interval, _run, occupancy_exact_match_pct,
 )
 from peoplein.stream import (
-    _decode_camera, common_archive_interval, remote_archive,
+    _decode_camera, _remote_intervals, common_archive_interval, remote_archive,
 )
 from peoplein.sync import PlaybackClock
 
@@ -63,7 +64,7 @@ class ArchiveRunTest(unittest.TestCase):
                 ("entrance", "loby"),
                 "user",
                 "secret",
-            ) as (archive, intervals):
+            ) as (archive, intervals, skipped):
                 temporary_archive = archive
                 self.assertEqual(
                     list(intervals),
@@ -82,6 +83,13 @@ class ArchiveRunTest(unittest.TestCase):
                         ),
                     ],
                 )
+                self.assertEqual(
+                    [(row["start"], row["end"]) for row in skipped],
+                    [
+                        ("2026-01-01T00:00:00.000", "2026-01-01T00:00:02.000"),
+                        ("2026-01-01T00:00:10.000", "2026-01-01T00:00:12.000"),
+                    ],
+                )
             self.assertFalse(temporary_archive.exists())
 
             with remote_archive(
@@ -90,7 +98,7 @@ class ArchiveRunTest(unittest.TestCase):
                 "user",
                 "secret",
                 debug=True,
-            ) as (debug_archive, intervals):
+            ) as (debug_archive, intervals, _skipped):
                 list(intervals)
             self.assertTrue(debug_archive.is_dir())
             self.assertTrue(
@@ -102,6 +110,202 @@ class ArchiveRunTest(unittest.TestCase):
             request.get_header("Authorization") == "Basic dXNlcjpzZWNyZXQ="
             for request in requests
         ))
+
+    def test_remote_archive_interval_edge_cases(self):
+        started = datetime(2026, 1, 1)
+        cases = {
+            "tail_joins_next_file": (
+                {"entrance": [(0, 10)], "loby": [(0, 5), (5, 5)]},
+                [(0, 5), (5, 10)],
+                [],
+            ),
+            "shifted_end": (
+                {"entrance": [(0, 10)], "loby": [(2, 5)]},
+                [(2, 7)],
+                [(0, 2), (7, 10)],
+            ),
+            "short_video": (
+                {"entrance": [(0, 0.2)], "loby": [(0, 5)]},
+                [(0, 0.2)],
+                [(0.2, 5)],
+            ),
+            "gap_one_camera": (
+                {"entrance": [(0, 5), (20, 5)], "loby": [(0, 25)]},
+                [(0, 5), (20, 25)],
+                [(5, 20)],
+            ),
+            "gap_both_cameras": (
+                {
+                    "entrance": [(0, 5), (20, 5)],
+                    "loby": [(0, 5), (20, 5)],
+                },
+                [(0, 5), (20, 25)],
+                [(5, 20)],
+            ),
+            "large_gap_one_camera": (
+                {
+                    "entrance": [(0, 5), (3600, 5)],
+                    "loby": [(0, 3605)],
+                },
+                [(0, 5), (3600, 3605)],
+                [(5, 3600)],
+            ),
+            "large_gap_both_cameras": (
+                {
+                    "entrance": [(0, 5), (3600, 5)],
+                    "loby": [(0, 5), (3600, 5)],
+                },
+                [(0, 5), (3600, 3605)],
+                [(5, 3600)],
+            ),
+            "no_overlap": (
+                {"entrance": [(0, 5)], "loby": [(20, 5)]},
+                [],
+                [(0, 25)],
+            ),
+        }
+
+        for label, (files, expected, expected_skipped) in cases.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as directory:
+                names = {
+                    camera: [
+                        (started + timedelta(seconds=start)).strftime(
+                            "%Y%m%d-%H%M%S.mkv"
+                        )
+                        for start, _ in videos
+                    ]
+                    for camera, videos in files.items()
+                }
+                durations = {
+                    (camera, name): duration
+                    for camera, videos in files.items()
+                    for name, (_, duration) in zip(names[camera], videos)
+                }
+
+                def remote_names(url, _login, _password):
+                    return names[url.rstrip("/").rsplit("/", 1)[-1]]
+
+                def download(_url, destination, _login, _password):
+                    destination.write_bytes(b"mkv")
+
+                def video_info(path):
+                    duration = durations[(path.parent.name, path.name)]
+                    return 10, round(duration * 10), 0
+
+                skipped = []
+                with patch(
+                    "peoplein.stream._remote_mkv_names", side_effect=remote_names,
+                ), patch(
+                    "peoplein.stream._download_mkv", side_effect=download,
+                ), patch(
+                    "peoplein.stream._video_info", side_effect=video_info,
+                ):
+                    actual = list(_remote_intervals(
+                        "http://archive.test", tuple(files), Path(directory),
+                        "", "", skipped,
+                    ))
+
+                self.assertEqual(actual, [
+                    (
+                        started + timedelta(seconds=start),
+                        started + timedelta(seconds=end),
+                    )
+                    for start, end in expected
+                ])
+                self.assertEqual([
+                    (
+                        datetime.fromisoformat(row["start"]),
+                        datetime.fromisoformat(row["end"]),
+                    )
+                    for row in skipped
+                ], [
+                    (
+                        started + timedelta(seconds=start),
+                        started + timedelta(seconds=end),
+                    )
+                    for start, end in expected_skipped
+                ])
+                self.assertTrue(all(
+                    row["reason"] == "camera_archives_do_not_overlap"
+                    for row in skipped
+                ))
+                self.assertEqual(
+                    [row["duration_seconds"] for row in skipped],
+                    [end - start for start, end in expected_skipped],
+                )
+
+    def test_remote_run_omits_gap_telemetry_and_summarizes_it(self):
+        started = datetime(2026, 1, 1)
+        intervals = iter((
+            (started, started + timedelta(seconds=2)),
+            (
+                started + timedelta(seconds=10),
+                started + timedelta(seconds=12),
+            ),
+        ))
+        skipped = [{
+            "start": "2026-01-01T00:00:02.000",
+            "end": "2026-01-01T00:00:10.000",
+            "duration_seconds": 8.0,
+            "reason": "camera_archives_do_not_overlap",
+        }]
+
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            archive = project / "archive"
+            archive.mkdir()
+            config = project / "config.toml"
+            config.write_text("debug = false\n", encoding="utf-8")
+            args = SimpleNamespace(
+                archive_dir=archive,
+                compare_reference=False,
+                start_offset_ms=0,
+            )
+            counter = Mock()
+            counter.snapshot.return_value = {
+                "entered_total": 1,
+                "exited_total": 0,
+                "people_inside": 1,
+                "passage_confirmation_ratio": 1.0,
+            }
+            counter.diagnostic_summary.return_value = {}
+
+            with patch("peoplein.run.PROJECT_DIR", project), patch(
+                "peoplein.run.CONFIG_PATH", config,
+            ), patch(
+                "peoplein.run.DATABASE_PATH", project / "read.sqlite3",
+            ), patch(
+                "peoplein.run.__version__", "test",
+            ), patch(
+                "peoplein.run.prepare_benchmark_enabled", return_value=False,
+            ), patch(
+                "peoplein.run.debug_mode", return_value=False,
+            ), patch(
+                "peoplein.run.door_counter_settings", return_value={},
+            ), patch(
+                "peoplein.run.DoorCounter", return_value=counter,
+            ), patch(
+                "peoplein.run._analyze_interval", return_value=(2, 1, 0),
+            ), patch("peoplein.run.logging.basicConfig"):
+                _run(args, Mock(), intervals, skipped)
+
+            run_dir = project / "runs" / "test"
+            telemetry = [
+                json.loads(line)
+                for line in (run_dir / "telemetry.jsonl").read_text().splitlines()
+            ]
+            self.assertEqual(
+                [row["mkv_pts_time"] for row in telemetry],
+                [
+                    "2026-01-01 00:00:00.000",
+                    "2026-01-01 00:00:01.000",
+                    "2026-01-01 00:00:10.000",
+                    "2026-01-01 00:00:11.000",
+                ],
+            )
+            summary = json.loads((run_dir / "summary.json").read_text())
+            self.assertEqual(summary["run"]["skipped_intervals"], skipped)
+            counter.reset_stream.assert_called_once_with()
 
     @patch("peoplein.stream._video_info")
     def test_common_archive_and_reference_interval(self, video_info):

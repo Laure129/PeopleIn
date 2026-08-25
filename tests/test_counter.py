@@ -2,6 +2,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from collections import deque
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -37,6 +38,31 @@ class RecordingDetector:
 
 
 class DoorCounterTest(unittest.TestCase):
+    def test_stream_reset_discards_only_temporal_state(self):
+        counter = DoorCounter.__new__(DoorCounter)
+        counter.events = [{"direction": "entry"}]
+        counter.motion_activity = [{"camera": "loby"}]
+        counter.motion_activity_start = 0
+        counter.tracks = {"entrance": {1: object()}}
+        counter.pending_frames = {"entrance": deque([object()])}
+        counter.frame_history = {"entrance": deque([object()], maxlen=7)}
+        counter.motion = {
+            "loby": {"previous_gray": object(), "mask": object()},
+        }
+        counter.pending_evidence = [object()]
+
+        counter.reset_stream()
+
+        self.assertEqual(counter.events, [{"direction": "entry"}])
+        self.assertEqual(counter.motion_activity, [{"camera": "loby"}])
+        self.assertEqual(counter.motion_activity_start, 1)
+        self.assertFalse(counter.tracks["entrance"])
+        self.assertFalse(counter.pending_frames["entrance"])
+        self.assertFalse(counter.frame_history["entrance"])
+        self.assertIsNone(counter.motion["loby"]["previous_gray"])
+        self.assertIsNotNone(counter.motion["loby"]["mask"])
+        self.assertFalse(counter.pending_evidence)
+
     def test_motion_direction_can_be_limited_to_perpendicular(self):
         geometry = {
             "line": ((0, 0), (0, 20)),

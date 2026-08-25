@@ -141,6 +141,7 @@ class DoorCounter:
         self.next_track_id = 1
         self.events = []
         self.motion_activity = []
+        self.motion_activity_start = 0
         self.pending_frames = {
             camera: deque() for camera in cameras
         }
@@ -227,7 +228,7 @@ class DoorCounter:
             elif any(
                 abs((timestamp - activity["timestamp"]).total_seconds())
                 <= PERSON_ANALYSIS_WINDOW_SECONDS
-                for activity in self.motion_activity
+                for activity in self.motion_activity[self.motion_activity_start:]
             ):
                 self._analyze_people(camera, frame, timestamp)
             else:
@@ -531,7 +532,9 @@ class DoorCounter:
             if not force and age <= self.agreement_seconds:
                 continue
             candidates = [
-                candidate for candidate in self.motion_activity
+                candidate for candidate in self.motion_activity[
+                    self.motion_activity_start:
+                ]
                 if abs((event["timestamp"] - candidate["timestamp"])
                        .total_seconds()) <= self.agreement_seconds
             ]
@@ -826,6 +829,19 @@ class DoorCounter:
             self._flush_frames(timestamp, force=True)
         self._expire_events(timestamp, force=True)
         self._save_ready_evidence(timestamp, force=True)
+
+    def reset_stream(self):
+        """Discard temporal state that cannot cross an archive gap."""
+        for tracks in self.tracks.values():
+            tracks.clear()
+        for frames in self.pending_frames.values():
+            frames.clear()
+        for history in self.frame_history.values():
+            history.clear()
+        for state in self.motion.values():
+            state["previous_gray"] = None
+        self.pending_evidence.clear()
+        self.motion_activity_start = len(self.motion_activity)
 
     def close(self):
         if self.diagnostics:

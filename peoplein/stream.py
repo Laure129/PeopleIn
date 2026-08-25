@@ -94,16 +94,40 @@ def remote_archive(base_url, cameras, login="", password="", debug=False):
         temporary = tempfile.TemporaryDirectory(prefix="peoplein-archive-")
         archive_dir = Path(temporary.name)
 
+    skipped_intervals = []
     try:
         yield archive_dir, _remote_intervals(
             base_url, cameras, archive_dir, login, password,
-        )
+            skipped_intervals,
+        ), skipped_intervals
     finally:
         if temporary is not None:
             temporary.cleanup()
 
 
-def _remote_intervals(base_url, cameras, archive_dir, login, password):
+def _record_skipped_interval(skipped_intervals, start, end):
+    if start >= end:
+        return
+    interval = {
+        "start": start.isoformat(timespec="milliseconds"),
+        "end": end.isoformat(timespec="milliseconds"),
+        "duration_seconds": (end - start).total_seconds(),
+        "reason": "camera_archives_do_not_overlap",
+    }
+    skipped_intervals.append(interval)
+    log.warning(
+        "archive interval skipped start=%s end=%s duration_seconds=%s "
+        "reason=%s",
+        interval["start"], interval["end"], interval["duration_seconds"],
+        interval["reason"],
+    )
+
+
+def _remote_intervals(
+    base_url, cameras, archive_dir, login, password, skipped_intervals=None,
+):
+    if skipped_intervals is None:
+        skipped_intervals = []
     names = {}
     urls = {}
     for camera in cameras:
@@ -152,13 +176,18 @@ def _remote_intervals(base_url, cameras, archive_dir, login, password):
         if not advance(camera):
             return
 
+    archive_start = min(item[1] for item in active.values())
+    latest_end = max(item[2] for item in active.values())
     previous_end = None
     while True:
         start = max(item[1] for item in active.values())
         end = min(item[2] for item in active.values())
         if start < end:
-            if previous_end is not None and start > previous_end:
-                log.warning("archive gap interval=%s..%s", previous_end, start)
+            _record_skipped_interval(
+                skipped_intervals,
+                previous_end if previous_end is not None else archive_start,
+                start,
+            )
             log.info("analysis interval ready start=%s end=%s", start, end)
             yield start, end
             previous_end = end
@@ -171,7 +200,13 @@ def _remote_intervals(base_url, cameras, archive_dir, login, password):
             ]
         for camera in expired:
             if not advance(camera):
+                _record_skipped_interval(
+                    skipped_intervals,
+                    previous_end if previous_end is not None else archive_start,
+                    latest_end,
+                )
                 return
+            latest_end = max(latest_end, active[camera][2])
 
 
 def _mkv_files(camera_dir):
