@@ -1,6 +1,7 @@
 import io
 import json
 import tempfile
+import threading
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -233,6 +234,33 @@ class ArchiveRunTest(unittest.TestCase):
                     [row["duration_seconds"] for row in skipped],
                     [end - start for start, end in expected_skipped],
                 )
+
+    @patch("peoplein.stream._video_info", return_value=(1, 5, 0))
+    @patch(
+        "peoplein.stream._remote_mkv_names",
+        return_value=["20260101-000000.mkv"],
+    )
+    def test_remote_archive_starts_camera_downloads_together(
+        self, _remote_names, _video_info,
+    ):
+        barrier = threading.Barrier(2)
+
+        def download(_url, destination, _login, _password):
+            barrier.wait(timeout=1)
+            destination.write_bytes(b"mkv")
+
+        with tempfile.TemporaryDirectory() as directory, patch(
+            "peoplein.stream._download_mkv", side_effect=download,
+        ):
+            self.assertEqual(list(_remote_intervals(
+                "http://archive.test", ("entrance", "loby"),
+                Path(directory), "", "",
+            )), [
+                (
+                    datetime(2026, 1, 1),
+                    datetime(2026, 1, 1, 0, 0, 5),
+                ),
+            ])
 
     def test_remote_run_omits_gap_telemetry_and_summarizes_it(self):
         started = datetime(2026, 1, 1)

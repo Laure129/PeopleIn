@@ -10,6 +10,7 @@ import tempfile
 import threading
 from bisect import bisect_right
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from fractions import Fraction
@@ -172,41 +173,44 @@ def _remote_intervals(
         )
         return True
 
-    for camera in cameras:
-        if not advance(camera):
+    with ThreadPoolExecutor(max_workers=len(cameras)) as downloads:
+        initial = dict(zip(cameras, downloads.map(advance, cameras)))
+        if not all(initial.values()):
             return
 
-    archive_start = min(item[1] for item in active.values())
-    latest_end = max(item[2] for item in active.values())
-    previous_end = None
-    while True:
-        start = max(item[1] for item in active.values())
-        end = min(item[2] for item in active.values())
-        if start < end:
-            _record_skipped_interval(
-                skipped_intervals,
-                previous_end if previous_end is not None else archive_start,
-                start,
-            )
-            log.info("analysis interval ready start=%s end=%s", start, end)
-            yield start, end
-            previous_end = end
-            expired = [
-                camera for camera, item in active.items() if item[2] == end
-            ]
-        else:
-            expired = [
-                camera for camera, item in active.items() if item[2] <= start
-            ]
-        for camera in expired:
-            if not advance(camera):
+        archive_start = min(item[1] for item in active.values())
+        latest_end = max(item[2] for item in active.values())
+        previous_end = None
+        while True:
+            start = max(item[1] for item in active.values())
+            end = min(item[2] for item in active.values())
+            if start < end:
+                _record_skipped_interval(
+                    skipped_intervals,
+                    previous_end if previous_end is not None else archive_start,
+                    start,
+                )
+                log.info("analysis interval ready start=%s end=%s", start, end)
+                yield start, end
+                previous_end = end
+                expired = [
+                    camera for camera, item in active.items() if item[2] == end
+                ]
+            else:
+                expired = [
+                    camera for camera, item in active.items() if item[2] <= start
+                ]
+            advanced = dict(zip(expired, downloads.map(advance, expired)))
+            for camera, available in advanced.items():
+                if available:
+                    latest_end = max(latest_end, active[camera][2])
+            if not all(advanced.values()):
                 _record_skipped_interval(
                     skipped_intervals,
                     previous_end if previous_end is not None else archive_start,
                     latest_end,
                 )
                 return
-            latest_end = max(latest_end, active[camera][2])
 
 
 def _mkv_files(camera_dir):
