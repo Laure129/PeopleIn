@@ -80,7 +80,7 @@ def _download_mkv(url, destination, login, password):
 
 @contextmanager
 def remote_archive(base_url, cameras, login="", password="", debug=False):
-    """Download a remote archive once and clean it unless debug is enabled."""
+    """Yield a rolling local cache and its synchronized remote intervals."""
     temporary = None
     if debug:
         resources = PROJECT_DIR / "resources"
@@ -95,24 +95,83 @@ def remote_archive(base_url, cameras, login="", password="", debug=False):
         archive_dir = Path(temporary.name)
 
     try:
-        for camera in cameras:
-            camera_url = f"{base_url.rstrip('/')}/{quote(camera, safe='')}/"
-            names = _remote_mkv_names(camera_url, login, password)
-            if not names:
-                raise ValueError(f"remote camera archive is empty: {camera}")
-            camera_dir = archive_dir / camera
-            camera_dir.mkdir()
-            for name in names:
-                _download_mkv(
-                    urljoin(camera_url, quote(name, safe="")),
-                    camera_dir / name,
-                    login,
-                    password,
-                )
-        yield archive_dir
+        yield archive_dir, _remote_intervals(
+            base_url, cameras, archive_dir, login, password,
+        )
     finally:
         if temporary is not None:
             temporary.cleanup()
+
+
+def _remote_intervals(base_url, cameras, archive_dir, login, password):
+    names = {}
+    urls = {}
+    for camera in cameras:
+        urls[camera] = f"{base_url.rstrip('/')}/{quote(camera, safe='')}/"
+        names[camera] = _remote_mkv_names(urls[camera], login, password)
+        if not names[camera]:
+            raise ValueError(f"remote camera archive is empty: {camera}")
+        (Path(archive_dir) / camera).mkdir()
+        log.info(
+            "remote camera discovered camera=%s files=%d",
+            camera, len(names[camera]),
+        )
+
+    active = {}
+    indexes = {camera: 0 for camera in cameras}
+
+    def advance(camera):
+        index = indexes[camera]
+        if index >= len(names[camera]):
+            return False
+        name = names[camera][index]
+        destination = Path(archive_dir) / camera / name
+        log.info("download started camera=%s file=%s", camera, name)
+        _download_mkv(
+            urljoin(urls[camera], quote(name, safe="")),
+            destination,
+            login,
+            password,
+        )
+        fps, frame_count, start_pts = _video_info(destination)
+        start = datetime.strptime(destination.stem, "%Y%m%d-%H%M%S") \
+            + timedelta(seconds=start_pts)
+        end = start + timedelta(seconds=frame_count / fps)
+        previous = active.get(camera)
+        active[camera] = (destination, start, end)
+        indexes[camera] += 1
+        if previous is not None:
+            previous[0].unlink(missing_ok=True)
+        log.info(
+            "download completed camera=%s file=%s bytes=%d interval=%s..%s",
+            camera, name, destination.stat().st_size, start, end,
+        )
+        return True
+
+    for camera in cameras:
+        if not advance(camera):
+            return
+
+    previous_end = None
+    while True:
+        start = max(item[1] for item in active.values())
+        end = min(item[2] for item in active.values())
+        if start < end:
+            if previous_end is not None and start > previous_end:
+                log.warning("archive gap interval=%s..%s", previous_end, start)
+            log.info("analysis interval ready start=%s end=%s", start, end)
+            yield start, end
+            previous_end = end
+            expired = [
+                camera for camera, item in active.items() if item[2] == end
+            ]
+        else:
+            expired = [
+                camera for camera, item in active.items() if item[2] <= start
+            ]
+        for camera in expired:
+            if not advance(camera):
+                return
 
 
 def _mkv_files(camera_dir):

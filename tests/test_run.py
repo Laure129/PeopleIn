@@ -35,7 +35,8 @@ class ArchiveRunTest(unittest.TestCase):
                 "https://archive.test/root", "process-user", "secret value",
             ))
 
-    def test_remote_archive_cleanup_and_debug_cache(self):
+    @patch("peoplein.stream._video_info", return_value=(1, 5, 0))
+    def test_remote_archive_streams_misaligned_files(self, _video_info):
         class Response(io.BytesIO):
             def __init__(self, body):
                 super().__init__(body)
@@ -46,7 +47,12 @@ class ArchiveRunTest(unittest.TestCase):
         def open_url(request, timeout):
             requests.append(request)
             if request.full_url.endswith("/"):
-                return Response(b'<a href="20260101-000000.mkv">video</a>')
+                start = "000000" if "/entrance/" in request.full_url else "000002"
+                second = "000005" if start == "000000" else "000007"
+                return Response((
+                    f'<a href="20260101-{start}.mkv">video</a>'
+                    f'<a href="20260101-{second}.mkv">video</a>'
+                ).encode())
             return Response(b"mkv")
 
         with tempfile.TemporaryDirectory() as directory, patch(
@@ -57,11 +63,24 @@ class ArchiveRunTest(unittest.TestCase):
                 ("entrance", "loby"),
                 "user",
                 "secret",
-            ) as archive:
+            ) as (archive, intervals):
                 temporary_archive = archive
                 self.assertEqual(
-                    sorted(path.name for path in archive.glob("*/*.mkv")),
-                    ["20260101-000000.mkv", "20260101-000000.mkv"],
+                    list(intervals),
+                    [
+                        (
+                            datetime(2026, 1, 1, 0, 0, 2),
+                            datetime(2026, 1, 1, 0, 0, 5),
+                        ),
+                        (
+                            datetime(2026, 1, 1, 0, 0, 5),
+                            datetime(2026, 1, 1, 0, 0, 7),
+                        ),
+                        (
+                            datetime(2026, 1, 1, 0, 0, 7),
+                            datetime(2026, 1, 1, 0, 0, 10),
+                        ),
+                    ],
                 )
             self.assertFalse(temporary_archive.exists())
 
@@ -71,12 +90,13 @@ class ArchiveRunTest(unittest.TestCase):
                 "user",
                 "secret",
                 debug=True,
-            ) as debug_archive:
-                pass
+            ) as (debug_archive, intervals):
+                list(intervals)
             self.assertTrue(debug_archive.is_dir())
             self.assertTrue(
                 debug_archive.name.startswith("archive_debug_cache_remote-")
             )
+            self.assertEqual(len(list(debug_archive.glob("*/*.mkv"))), 2)
 
         self.assertTrue(all(
             request.get_header("Authorization") == "Basic dXNlcjpzZWNyZXQ="

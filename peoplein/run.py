@@ -147,12 +147,75 @@ def main():
         login,
         password,
         debug=debug_mode(),
-    ) as archive_dir:
+    ) as (archive_dir, intervals):
         args.archive_dir = archive_dir
-        return _run(args, parser)
+        return _run(args, parser, intervals)
 
 
-def _run(args, parser):
+def _analyze_interval(
+    archive_dir, cameras, counter, start_time, end_time, interval_ms,
+    *, track_reads=None,
+):
+    plan = build_archive_plan(
+        archive_dir, start_time, end_time, cameras, interval_ms,
+    )
+    counts = Counter(
+        (ref["camera"], ref["mkv"], ref["frame_index"])
+        for refs in plan.values()
+        for ref in refs
+    )
+    store = FrameStore(counts)
+    if track_reads is None:
+        threads = start_decoders(archive_dir, plan, store)
+    else:
+        # ponytail: rolling batches can reuse one MKV; add range checkpoints
+        # if restart deduplication for remote archives becomes necessary.
+        threads = start_decoders(
+            archive_dir, plan, store, debug=not track_reads,
+        )
+    clock = PlaybackClock(start_time, interval_ms)
+    decoded = 0
+    max_skew = 0
+
+    for tick in range(len(plan[cameras[0]])):
+        expected_time = clock.expected_archive_time
+        stats = {}
+        for camera in cameras:
+            ref = plan[camera][tick]
+            if capture_needs_resync(
+                expected_time, ref["mkv_pts_time"], clock.archive_interval,
+            ):
+                raise RuntimeError(
+                    f"{camera} drifted from playback clock at tick {tick}"
+                )
+            frame = store.get(camera, ref["mkv"], ref["frame_index"])
+            if frame.shape != (FRAME_HEIGHT, FRAME_WIDTH, 3):
+                raise RuntimeError(f"unexpected frame shape: {frame.shape}")
+            counter.update(camera, frame, ref["mkv_pts_time"])
+            stats[camera] = {
+                "playback_tick": tick,
+                "mkv_pts_timestamp": ref["mkv_pts_time"].timestamp(),
+            }
+            decoded += 1
+        skew = archive_skew_ms(stats) or 0
+        if skew > interval_ms:
+            raise RuntimeError(f"camera skew is {skew} ms at tick {tick}")
+        max_skew = max(max_skew, skew)
+        clock.advance()
+
+    for thread in threads:
+        thread.join()
+    result = counter.snapshot(end_time)
+    log.info(
+        "analysis interval completed start=%s end=%s frames=%d ticks=%d "
+        "entered=%d exited=%d people_inside=%d",
+        start_time, end_time, decoded, clock.tick,
+        result["entered_total"], result["exited_total"], result["people_inside"],
+    )
+    return decoded, clock.tick, max_skew
+
+
+def _run(args, parser, intervals=None):
     if not args.archive_dir.is_dir():
         parser.error(f"archive directory not found: {args.archive_dir}")
     if args.start_offset_ms < 0:
@@ -161,19 +224,26 @@ def _run(args, parser):
         parser.error("start offset cannot be used with reference comparison")
 
     cameras = stream_cameras()
-    start_time, end_time = common_archive_interval(args.archive_dir, cameras)
     reference_path = None
-    if args.compare_reference:
-        reference_path = _reference_telemetry_path(args.archive_dir)
-        if not reference_path.is_file():
-            parser.error(f"reference telemetry not found: {reference_path}")
-        start_time, end_time = _reference_interval(
-            reference_path, start_time, end_time,
-        )
-    start_time += timedelta(milliseconds=args.start_offset_ms)
-    if start_time >= end_time:
-        parser.error("start offset leaves no archive to process")
-    duration = (end_time - start_time).total_seconds()
+    remote = intervals is not None
+    if remote:
+        if args.compare_reference:
+            parser.error("reference comparison requires a local archive")
+        reference_bounds = None
+    else:
+        start_time, end_time = common_archive_interval(args.archive_dir, cameras)
+        if args.compare_reference:
+            reference_path = _reference_telemetry_path(args.archive_dir)
+            if not reference_path.is_file():
+                parser.error(f"reference telemetry not found: {reference_path}")
+            start_time, end_time = _reference_interval(
+                reference_path, start_time, end_time,
+            )
+        start_time += timedelta(milliseconds=args.start_offset_ms)
+        if start_time >= end_time:
+            parser.error("start offset leaves no archive to process")
+        reference_bounds = (start_time, end_time)
+        intervals = iter((reference_bounds,))
 
     run_name = __version__
     if args.start_offset_ms:
@@ -196,25 +266,8 @@ def _run(args, parser):
     if existing:
         parser.error(f"run output already exists: {existing[0]}")
 
-    if prepare_benchmark_enabled():
-        prepare_benchmark()
-    if debug_mode():
-        DATABASE_PATH.unlink(missing_ok=True)
-
     run_dir.mkdir(parents=True, exist_ok=True)
     config_snapshot_path.write_bytes(CONFIG_PATH.read_bytes())
-    counter = DoorCounter(
-        **door_counter_settings(),
-        database_path=DATABASE_PATH,
-        app_version=__version__,
-        diagnostics_path=diagnostics_path,
-        evidence_dir=evidence_dir,
-        motion_activity_dir=motion_activity_dir,
-        reference_events=(
-            _reference_events(reference_path, start_time, end_time)
-            if reference_path else ()
-        ),
-    )
     command = shlex.join([
         sys.executable, "-m", "peoplein.run", *sys.argv[1:],
     ])
@@ -227,6 +280,23 @@ def _run(args, parser):
         ],
         force=True,
     )
+    if prepare_benchmark_enabled():
+        prepare_benchmark()
+    if debug_mode():
+        DATABASE_PATH.unlink(missing_ok=True)
+
+    counter = DoorCounter(
+        **door_counter_settings(),
+        database_path=DATABASE_PATH,
+        app_version=__version__,
+        diagnostics_path=diagnostics_path,
+        evidence_dir=evidence_dir,
+        motion_activity_dir=motion_activity_dir,
+        reference_events=(
+            _reference_events(reference_path, *reference_bounds)
+            if reference_path else ()
+        ),
+    )
     log.info(
         "run started cameras=%s archive=%s reference=%s",
         ",".join(cameras), args.archive_dir, reference_path or "disabled",
@@ -235,69 +305,50 @@ def _run(args, parser):
 
     try:
         interval_ms = frame_interval_ms()
-        plan = build_archive_plan(
-            args.archive_dir,
-            start_time,
-            end_time,
-            cameras,
-            interval_ms,
-        )
-        counts = Counter(
-            (ref["camera"], ref["mkv"], ref["frame_index"])
-            for refs in plan.values()
-            for ref in refs
-        )
-        store = FrameStore(counts)
-        threads = start_decoders(args.archive_dir, plan, store)
-        clock = PlaybackClock(start_time, interval_ms)
         decoded = 0
+        ticks = 0
         max_skew = 0
-        current_second = 0
         telemetry = []
+        start_time = None
+        end_time = None
+        duration = 0
+        offset_start = None
 
         with telemetry_path.open("x", encoding="utf-8") as output:
-            for tick in range(len(plan[cameras[0]])):
-                expected_time = clock.expected_archive_time
-                second = int((expected_time - start_time).total_seconds())
-                if second != current_second:
-                    current_second = second
+            for batch_start, batch_end in intervals:
+                if offset_start is None:
+                    offset_start = batch_start + timedelta(
+                        milliseconds=args.start_offset_ms,
+                    )
+                batch_start = max(batch_start, offset_start)
+                if batch_start >= batch_end:
+                    continue
+                if end_time is not None and batch_start > end_time:
+                    log.warning("analysis gap interval=%s..%s", end_time, batch_start)
+                if start_time is None:
+                    start_time = batch_start
+                batch_decoded, batch_ticks, batch_skew = _analyze_interval(
+                    args.archive_dir, cameras, counter,
+                    batch_start, batch_end, interval_ms,
+                    track_reads=False if remote else None,
+                )
+                decoded += batch_decoded
+                ticks += batch_ticks
+                max_skew = max(max_skew, batch_skew)
+                duration += (batch_end - batch_start).total_seconds()
+                end_time = batch_end
 
-                stats = {}
-                for camera in cameras:
-                    ref = plan[camera][tick]
-                    if capture_needs_resync(
-                        expected_time,
-                        ref["mkv_pts_time"],
-                        clock.archive_interval,
-                    ):
-                        raise RuntimeError(
-                            f"{camera} drifted from playback clock at tick {tick}"
-                        )
-                    frame = store.get(camera, ref["mkv"], ref["frame_index"])
-                    if frame.shape != (FRAME_HEIGHT, FRAME_WIDTH, 3):
-                        raise RuntimeError(f"unexpected frame shape: {frame.shape}")
-                    counter.update(camera, frame, ref["mkv_pts_time"])
-                    stats[camera] = {
-                        "playback_tick": tick,
-                        "mkv_pts_timestamp": ref["mkv_pts_time"].timestamp(),
-                    }
-                    decoded += 1
-                skew = archive_skew_ms(stats) or 0
-                if skew > interval_ms:
-                    raise RuntimeError(f"camera skew is {skew} ms at tick {tick}")
-                max_skew = max(max_skew, skew)
-                clock.advance()
-
+            if start_time is None:
+                raise ValueError("selected camera archives do not overlap")
             counter.finish(end_time)
-            for second in range(current_second + 1):
+            second = 0
+            while start_time + timedelta(seconds=second) < end_time:
                 row = _telemetry_record(
                     start_time + timedelta(seconds=second), counter,
                 )
                 output.write(json.dumps(row, ensure_ascii=False) + "\n")
                 telemetry.append(row)
-
-        for thread in threads:
-            thread.join()
+                second += 1
 
         accuracy = (
             occupancy_exact_match_pct(telemetry, reference_path)
@@ -357,7 +408,7 @@ def _run(args, parser):
             "occupancy_exact_match_pct=%s video_duration_seconds=%s "
             "processing_time_seconds=%s people_inside=%d "
             "passage_confirmation_ratio=%s",
-            len(telemetry), decoded, clock.tick, max_skew, accuracy,
+            len(telemetry), decoded, ticks, max_skew, accuracy,
             duration, processing_time, telemetry[-1]["people_inside"],
             telemetry[-1]["passage_confirmation_ratio"],
         )
