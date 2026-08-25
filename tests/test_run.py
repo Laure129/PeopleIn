@@ -37,7 +37,7 @@ class ArchiveRunTest(unittest.TestCase):
                 "https://archive.test/root", "process-user", "secret value",
             ))
 
-    @patch("peoplein.stream._video_info", return_value=(1, 5, 0))
+    @patch("peoplein.stream._video_info")
     def test_remote_archive_streams_misaligned_files(self, _video_info):
         class Response(io.BytesIO):
             def __init__(self, body):
@@ -45,6 +45,13 @@ class ArchiveRunTest(unittest.TestCase):
                 self.headers = {"Content-Length": str(len(body))}
 
         requests = []
+
+        def video_info(path):
+            if path.read_bytes() != b"mkv":
+                raise RuntimeError("broken cache")
+            return 1, 5, 0
+
+        _video_info.side_effect = video_info
 
         def open_url(request, timeout):
             requests.append(request)
@@ -101,11 +108,41 @@ class ArchiveRunTest(unittest.TestCase):
                 debug=True,
             ) as (debug_archive, intervals, _skipped):
                 list(intervals)
-            self.assertTrue(debug_archive.is_dir())
-            self.assertTrue(
-                debug_archive.name.startswith("archive_debug_cache_remote-")
+            downloads_before_reuse = sum(
+                not request.full_url.endswith("/") for request in requests
             )
-            self.assertEqual(len(list(debug_archive.glob("*/*.mkv"))), 2)
+            with remote_archive(
+                "http://archive.test/root",
+                ("entrance", "loby"),
+                "user",
+                "secret",
+                debug=True,
+            ) as (reused_archive, intervals, _skipped):
+                list(intervals)
+            self.assertTrue(debug_archive.is_dir())
+            self.assertEqual(
+                debug_archive,
+                Path(directory) / "resources" / "archive_debug_cache_remote",
+            )
+            self.assertEqual(reused_archive, debug_archive)
+            self.assertEqual(len(list(debug_archive.glob("*/*.mkv"))), 4)
+            self.assertEqual(sum(
+                not request.full_url.endswith("/") for request in requests
+            ), downloads_before_reuse)
+            corrupted = next(debug_archive.glob("*/*.mkv"))
+            corrupted.write_bytes(b"broken")
+            with remote_archive(
+                "http://archive.test/root",
+                ("entrance", "loby"),
+                "user",
+                "secret",
+                debug=True,
+            ) as (_archive, intervals, _skipped):
+                list(intervals)
+            self.assertEqual(corrupted.read_bytes(), b"mkv")
+            self.assertEqual(sum(
+                not request.full_url.endswith("/") for request in requests
+            ), downloads_before_reuse + 1)
 
         self.assertTrue(all(
             request.get_header("Authorization") == "Basic dXNlcjpzZWNyZXQ="

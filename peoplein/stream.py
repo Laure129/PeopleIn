@@ -12,7 +12,7 @@ from bisect import bisect_right
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from fractions import Fraction
 from pathlib import Path
 from urllib.parse import quote, unquote, urljoin, urlparse
@@ -84,13 +84,8 @@ def remote_archive(base_url, cameras, login="", password="", debug=False):
     """Yield a rolling local cache and its synchronized remote intervals."""
     temporary = None
     if debug:
-        resources = PROJECT_DIR / "resources"
-        resources.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        archive_dir = Path(tempfile.mkdtemp(
-            prefix=f"archive_debug_cache_remote-{stamp}-",
-            dir=resources,
-        ))
+        archive_dir = PROJECT_DIR / "resources" / "archive_debug_cache_remote"
+        archive_dir.mkdir(parents=True, exist_ok=True)
     else:
         temporary = tempfile.TemporaryDirectory(prefix="peoplein-archive-")
         archive_dir = Path(temporary.name)
@@ -99,7 +94,7 @@ def remote_archive(base_url, cameras, login="", password="", debug=False):
     try:
         yield archive_dir, _remote_intervals(
             base_url, cameras, archive_dir, login, password,
-            skipped_intervals,
+            skipped_intervals, keep_files=debug,
         ), skipped_intervals
     finally:
         if temporary is not None:
@@ -126,6 +121,7 @@ def _record_skipped_interval(skipped_intervals, start, end):
 
 def _remote_intervals(
     base_url, cameras, archive_dir, login, password, skipped_intervals=None,
+    *, keep_files=False,
 ):
     if skipped_intervals is None:
         skipped_intervals = []
@@ -136,7 +132,7 @@ def _remote_intervals(
         names[camera] = _remote_mkv_names(urls[camera], login, password)
         if not names[camera]:
             raise ValueError(f"remote camera archive is empty: {camera}")
-        (Path(archive_dir) / camera).mkdir()
+        (Path(archive_dir) / camera).mkdir(exist_ok=True)
         log.info(
             "remote camera discovered camera=%s files=%d",
             camera, len(names[camera]),
@@ -151,24 +147,39 @@ def _remote_intervals(
             return False
         name = names[camera][index]
         destination = Path(archive_dir) / camera / name
-        log.info("download started camera=%s file=%s", camera, name)
-        _download_mkv(
-            urljoin(urls[camera], quote(name, safe="")),
-            destination,
-            login,
-            password,
-        )
-        fps, frame_count, start_pts = _video_info(destination)
+        # ponytail: timestamped MKVs are assumed immutable; add ETag checks if
+        # the archive server starts replacing files under existing names.
+        cached = destination.is_file()
+        if cached:
+            try:
+                video_info = _video_info(destination)
+            except Exception as error:
+                cached = False
+                log.warning(
+                    "cache invalid camera=%s file=%s error=%s",
+                    camera, name, error,
+                )
+        if not cached:
+            log.info("download started camera=%s file=%s", camera, name)
+            _download_mkv(
+                urljoin(urls[camera], quote(name, safe="")),
+                destination,
+                login,
+                password,
+            )
+            video_info = _video_info(destination)
+        fps, frame_count, start_pts = video_info
         start = datetime.strptime(destination.stem, "%Y%m%d-%H%M%S") \
             + timedelta(seconds=start_pts)
         end = start + timedelta(seconds=frame_count / fps)
         previous = active.get(camera)
         active[camera] = (destination, start, end)
         indexes[camera] += 1
-        if previous is not None:
+        if previous is not None and not keep_files:
             previous[0].unlink(missing_ok=True)
         log.info(
-            "download completed camera=%s file=%s bytes=%d interval=%s..%s",
+            "%s camera=%s file=%s bytes=%d interval=%s..%s",
+            "cache hit" if cached else "download completed",
             camera, name, destination.stat().st_size, start, end,
         )
         return True
