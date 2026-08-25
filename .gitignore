@@ -1,3 +1,4 @@
 .env
+__pycache__/
 data/read_files.sqlite3*
 resources/archive_debug_cache_remote-*
