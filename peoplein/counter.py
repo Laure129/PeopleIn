@@ -220,7 +220,9 @@ class DoorCounter:
                 frame, timestamp, labels = frames.popleft()
                 ready.append((timestamp, order, camera, frame, labels))
 
-        for timestamp, _, camera, frame, labels in sorted(ready):
+        for timestamp, _, camera, frame, labels in sorted(
+            ready, key=lambda item: item[:2],
+        ):
             self._expire_events(timestamp)
             if camera in self.motion:
                 self.frame_history[camera].append((frame, timestamp, labels))

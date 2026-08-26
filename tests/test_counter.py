@@ -5,6 +5,7 @@ import unittest
 from collections import deque
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import Mock
 
 import cv2
 import numpy as np
@@ -38,6 +39,31 @@ class RecordingDetector:
 
 
 class DoorCounterTest(unittest.TestCase):
+    def test_flush_accepts_duplicate_camera_timestamps(self):
+        started = datetime(2026, 1, 2)
+        frames = [
+            np.full((1, 1, 3), value, dtype=np.uint8)
+            for value in (1, 2)
+        ]
+        counter = DoorCounter.__new__(DoorCounter)
+        counter.pending_frames = {
+            "entrance": deque((frame, started, []) for frame in frames),
+        }
+        counter.motion = {}
+        counter.motion_activity = []
+        counter.motion_activity_start = 0
+        counter.tracks = {"entrance": {}}
+        counter.frame_history = {"entrance": deque(maxlen=7)}
+        counter._expire_events = Mock()
+        counter._save_ready_evidence = Mock()
+
+        counter._flush_frames(started, force=True)
+
+        self.assertEqual(
+            [int(frame[0, 0, 0]) for frame, _, _ in counter.frame_history["entrance"]],
+            [1, 2],
+        )
+
     def test_stream_reset_discards_only_temporal_state(self):
         counter = DoorCounter.__new__(DoorCounter)
         counter.events = [{"direction": "entry"}]
