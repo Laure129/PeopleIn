@@ -212,7 +212,7 @@ def _analyze_interval(
         start_time, end_time, decoded, clock.tick,
         result["entered_total"], result["exited_total"], result["people_inside"],
     )
-    return decoded, clock.tick, max_skew
+    return decoded, clock.tick, max_skew, result
 
 
 def _run(args, parser, intervals=None, skipped_intervals=None):
@@ -315,6 +315,64 @@ def _run(args, parser, intervals=None, skipped_intervals=None):
         duration = 0
         offset_start = None
         processed_intervals = []
+        archive_path = args.archive_dir.resolve()
+
+        def write_summary(result, accuracy=None):
+            processing_time = round(time.monotonic() - started, 3)
+            summary = {
+                "format_version": 1,
+                "app_version": __version__,
+                "run": {
+                    "source_archive": str(
+                        archive_path.relative_to(PROJECT_DIR)
+                        if archive_path.is_relative_to(PROJECT_DIR)
+                        else archive_path
+                    ),
+                    "start_time": start_time.isoformat(
+                        timespec="milliseconds"
+                    ),
+                    "end_time": end_time.isoformat(timespec="milliseconds"),
+                    "start_offset_ms": args.start_offset_ms,
+                    "time_zone": (
+                        str(start_time.tzinfo)
+                        if start_time.tzinfo else None
+                    ),
+                    "video_duration_seconds": duration,
+                    "processing_time_seconds": processing_time,
+                    "skipped_intervals": skipped_intervals,
+                },
+                "result": {
+                    "entered_total": result["entered_total"],
+                    "exited_total": result["exited_total"],
+                    "people_inside": result["people_inside"],
+                    "passage_confirmation_ratio": result[
+                        "passage_confirmation_ratio"
+                    ],
+                },
+                **counter.diagnostic_summary(),
+                "artifacts": {
+                    "log": log_path.name,
+                    "diagnostics": diagnostics_path.name,
+                    "evidence": evidence_dir.name,
+                    "motion_activity": motion_activity_dir.name,
+                    "config": config_snapshot_path.name,
+                },
+                "command": command,
+            }
+            if reference_path:
+                summary["run"]["reference_telemetry"] = str(
+                    reference_path.relative_to(PROJECT_DIR)
+                )
+                if accuracy is not None:
+                    summary["result"]["occupancy_exact_match_pct"] = accuracy
+            temporary = summary_path.with_suffix(".json.tmp")
+            temporary.write_text(
+                json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            temporary.replace(summary_path)
+            log.info("summary updated end=%s", end_time)
+            return processing_time
 
         with telemetry_path.open("x", encoding="utf-8") as output:
             for batch_start, batch_end in intervals:
@@ -330,7 +388,9 @@ def _run(args, parser, intervals=None, skipped_intervals=None):
                     counter.reset_stream()
                 if start_time is None:
                     start_time = batch_start
-                batch_decoded, batch_ticks, batch_skew = _analyze_interval(
+                (
+                    batch_decoded, batch_ticks, batch_skew, batch_result,
+                ) = _analyze_interval(
                     args.archive_dir, cameras, counter,
                     batch_start, batch_end, interval_ms,
                     track_reads=False if remote else None,
@@ -341,6 +401,7 @@ def _run(args, parser, intervals=None, skipped_intervals=None):
                 duration += (batch_end - batch_start).total_seconds()
                 end_time = batch_end
                 processed_intervals.append((batch_start, batch_end))
+                write_summary(batch_result)
 
             if start_time is None:
                 raise ValueError("selected camera archives do not overlap")
@@ -357,56 +418,7 @@ def _run(args, parser, intervals=None, skipped_intervals=None):
             occupancy_exact_match_pct(telemetry, reference_path)
             if reference_path else None
         )
-        processing_time = round(time.monotonic() - started, 3)
-        archive_path = args.archive_dir.resolve()
-        summary = {
-            "format_version": 1,
-            "app_version": __version__,
-            "run": {
-                "source_archive": str(
-                    archive_path.relative_to(PROJECT_DIR)
-                    if archive_path.is_relative_to(PROJECT_DIR)
-                    else archive_path
-                ),
-                "start_time": start_time.isoformat(
-                    timespec="milliseconds"
-                ),
-                "start_offset_ms": args.start_offset_ms,
-                "time_zone": (
-                    str(start_time.tzinfo)
-                    if start_time.tzinfo else None
-                ),
-                "video_duration_seconds": duration,
-                "processing_time_seconds": processing_time,
-                "skipped_intervals": skipped_intervals,
-            },
-            "result": {
-                "entered_total": telemetry[-1]["entered_total"],
-                "exited_total": telemetry[-1]["exited_total"],
-                "people_inside": telemetry[-1]["people_inside"],
-                "passage_confirmation_ratio": telemetry[-1][
-                    "passage_confirmation_ratio"
-                ],
-            },
-            **counter.diagnostic_summary(),
-            "artifacts": {
-                "log": log_path.name,
-                "diagnostics": diagnostics_path.name,
-                "evidence": evidence_dir.name,
-                "motion_activity": motion_activity_dir.name,
-                "config": config_snapshot_path.name,
-            },
-            "command": command,
-        }
-        if reference_path:
-            summary["run"]["reference_telemetry"] = str(
-                reference_path.relative_to(PROJECT_DIR)
-            )
-            summary["result"]["occupancy_exact_match_pct"] = accuracy
-        summary_path.write_text(
-            json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        processing_time = write_summary(telemetry[-1], accuracy)
         log.info(
             "run completed seconds=%d frames=%d ticks=%d max_skew_ms=%d "
             "occupancy_exact_match_pct=%s video_duration_seconds=%s "

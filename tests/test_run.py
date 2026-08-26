@@ -333,6 +333,7 @@ class ArchiveRunTest(unittest.TestCase):
                 "people_inside": 1,
                 "passage_confirmation_ratio": 1.0,
             }
+            result = counter.snapshot.return_value
             counter.diagnostic_summary.return_value = {}
 
             with patch("peoplein.run.PROJECT_DIR", project), patch(
@@ -350,7 +351,8 @@ class ArchiveRunTest(unittest.TestCase):
             ), patch(
                 "peoplein.run.DoorCounter", return_value=counter,
             ), patch(
-                "peoplein.run._analyze_interval", return_value=(2, 1, 0),
+                "peoplein.run._analyze_interval",
+                return_value=(2, 1, 0, result),
             ), patch("peoplein.run.logging.basicConfig"):
                 _run(args, Mock(), intervals, skipped)
 
@@ -370,7 +372,69 @@ class ArchiveRunTest(unittest.TestCase):
             )
             summary = json.loads((run_dir / "summary.json").read_text())
             self.assertEqual(summary["run"]["skipped_intervals"], skipped)
+            self.assertEqual(
+                summary["run"]["end_time"], "2026-01-01T00:00:12.000",
+            )
             counter.reset_stream.assert_called_once_with()
+
+    def test_remote_run_keeps_summary_when_later_interval_fails(self):
+        started = datetime(2026, 1, 1)
+        intervals = iter((
+            (started, started + timedelta(seconds=2)),
+            (
+                started + timedelta(seconds=10),
+                started + timedelta(seconds=12),
+            ),
+        ))
+
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            archive = project / "archive"
+            archive.mkdir()
+            config = project / "config.toml"
+            config.write_text("debug = false\n", encoding="utf-8")
+            args = SimpleNamespace(
+                archive_dir=archive,
+                compare_reference=False,
+                start_offset_ms=0,
+            )
+            result = {
+                "entered_total": 1,
+                "exited_total": 0,
+                "people_inside": 1,
+                "passage_confirmation_ratio": 1.0,
+            }
+            counter = Mock()
+            counter.diagnostic_summary.return_value = {}
+
+            with patch("peoplein.run.PROJECT_DIR", project), patch(
+                "peoplein.run.CONFIG_PATH", config,
+            ), patch(
+                "peoplein.run.DATABASE_PATH", project / "read.sqlite3",
+            ), patch(
+                "peoplein.run.__version__", "test",
+            ), patch(
+                "peoplein.run.prepare_benchmark_enabled", return_value=False,
+            ), patch(
+                "peoplein.run.debug_mode", return_value=False,
+            ), patch(
+                "peoplein.run.door_counter_settings", return_value={},
+            ), patch(
+                "peoplein.run.DoorCounter", return_value=counter,
+            ), patch(
+                "peoplein.run._analyze_interval",
+                side_effect=((2, 1, 0, result), RuntimeError("second failed")),
+            ), patch("peoplein.run.logging.basicConfig"):
+                with self.assertRaisesRegex(RuntimeError, "second failed"):
+                    _run(args, Mock(), intervals, [])
+
+            summary_path = project / "runs" / "test" / "summary.json"
+            summary = json.loads(summary_path.read_text())
+            self.assertEqual(
+                summary["run"]["end_time"], "2026-01-01T00:00:02.000",
+            )
+            self.assertEqual(summary["result"]["people_inside"], 1)
+            self.assertFalse(summary_path.with_suffix(".json.tmp").exists())
 
     @patch("peoplein.stream._video_info")
     def test_common_archive_and_reference_interval(self, video_info):
