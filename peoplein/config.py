@@ -62,6 +62,17 @@ def frame_interval_ms(config_path=CONFIG_PATH):
     return value
 
 
+def motion_frame_interval_ms(config_path=CONFIG_PATH):
+    value = _settings(config_path).get(
+        "motion_frame_interval_ms", frame_interval_ms(config_path),
+    )
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ValueError(
+            "config motion_frame_interval_ms must be a positive integer"
+        )
+    return value
+
+
 def archive_dir(config_path=CONFIG_PATH):
     value = _settings(config_path).get("archive_dir", "archive_debug_cache")
     if (
@@ -203,6 +214,15 @@ def door_counter_settings(config_path=CONFIG_PATH):
             perpendicular_only = values.get(
                 "motion_perpendicular_only", False,
             )
+            profile_displacement = values.get(
+                "motion_profile_min_displacement_px", displacement,
+            )
+            profile_minimum = values.get(
+                "motion_profile_min_points", minimum,
+            )
+            profile_open_minimum = values.get(
+                "motion_profile_open_min_points", minimum,
+            )
             if isinstance(band_width, bool) or not isinstance(band_width, int) \
                     or band_width <= 0:
                 raise ValueError(
@@ -225,6 +245,27 @@ def door_counter_settings(config_path=CONFIG_PATH):
                     f"config camera {camera} "
                     "motion_perpendicular_only must be true or false"
                 )
+            if isinstance(profile_displacement, bool) or not isinstance(
+                profile_displacement, (int, float)
+            ) or profile_displacement <= 0:
+                raise ValueError(
+                    f"config camera {camera} "
+                    "motion_profile_min_displacement_px is invalid"
+                )
+            if isinstance(profile_minimum, bool) or not isinstance(
+                profile_minimum, int
+            ) or profile_minimum <= 0:
+                raise ValueError(
+                    f"config camera {camera} "
+                    "motion_profile_min_points is invalid"
+                )
+            if isinstance(profile_open_minimum, bool) or not isinstance(
+                profile_open_minimum, int
+            ) or profile_open_minimum <= 0:
+                raise ValueError(
+                    f"config camera {camera} "
+                    "motion_profile_open_min_points is invalid"
+                )
             result[camera]["motion_roi"] = tuple(
                 tuple(point) for point in motion_roi
             )
@@ -232,6 +273,13 @@ def door_counter_settings(config_path=CONFIG_PATH):
             result[camera]["motion_min_points"] = minimum
             result[camera]["motion_min_displacement_px"] = float(displacement)
             result[camera]["motion_perpendicular_only"] = perpendicular_only
+            result[camera]["motion_profile_min_displacement_px"] = float(
+                profile_displacement
+            )
+            result[camera]["motion_profile_min_points"] = profile_minimum
+            result[camera][
+                "motion_profile_open_min_points"
+            ] = profile_open_minimum
     return {
         "model_path": path.resolve().parent / model,
         "confidence": float(confidence),

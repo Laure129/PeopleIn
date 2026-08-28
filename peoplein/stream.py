@@ -102,7 +102,7 @@ def remote_archive(base_url, cameras, login="", password="", debug=False):
 
 
 def _record_skipped_interval(skipped_intervals, start, end):
-    if start >= end:
+    if end - start <= timedelta(seconds=1):
         return
     interval = {
         "start": start.isoformat(timespec="milliseconds"),
