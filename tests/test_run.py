@@ -13,7 +13,8 @@ from peoplein.run import (
     _reference_events, _reference_interval, _run, occupancy_exact_match_pct,
 )
 from peoplein.stream import (
-    _decode_camera, _remote_intervals, common_archive_interval, remote_archive,
+    _decode_camera, _remote_intervals, common_archive_interval,
+    local_archive_intervals, remote_archive,
 )
 from peoplein.sync import PlaybackClock
 
@@ -240,7 +241,11 @@ class ArchiveRunTest(unittest.TestCase):
                 ):
                     actual = list(_remote_intervals(
                         "http://archive.test", tuple(files), Path(directory),
-                        "", "", skipped,
+                        "", "", skipped, keep_files=True,
+                    ))
+                    local_skipped = []
+                    local_actual = list(local_archive_intervals(
+                        Path(directory), tuple(files), local_skipped,
                     ))
 
                 self.assertEqual(actual, [
@@ -250,6 +255,8 @@ class ArchiveRunTest(unittest.TestCase):
                     )
                     for start, end in expected
                 ])
+                self.assertEqual(local_actual, actual)
+                self.assertEqual(local_skipped, skipped)
                 self.assertEqual([
                     (
                         datetime.fromisoformat(row["start"]),
@@ -299,7 +306,7 @@ class ArchiveRunTest(unittest.TestCase):
                 ),
             ])
 
-    def test_remote_run_omits_gap_telemetry_and_summarizes_it(self):
+    def test_local_run_omits_gap_telemetry_and_summarizes_it(self):
         started = datetime(2026, 1, 1)
         intervals = iter((
             (started, started + timedelta(seconds=2)),
@@ -353,8 +360,11 @@ class ArchiveRunTest(unittest.TestCase):
             ), patch(
                 "peoplein.run._analyze_interval",
                 return_value=(2, 1, 0, result),
+            ), patch(
+                "peoplein.run.local_archive_intervals",
+                return_value=intervals,
             ), patch("peoplein.run.logging.basicConfig"):
-                _run(args, Mock(), intervals, skipped)
+                _run(args, Mock(), skipped_intervals=skipped)
 
             run_dir = project / "runs" / "test"
             telemetry = [

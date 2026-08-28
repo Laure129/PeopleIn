@@ -21,7 +21,8 @@ from .counter import DoorCounter
 from .prepare_benchmark import prepare_benchmark
 from .stream import (
     FRAME_HEIGHT, FRAME_WIDTH, FrameStore, build_archive_plan,
-    common_archive_interval, remote_archive, start_decoders,
+    common_archive_interval, local_archive_intervals, remote_archive,
+    start_decoders,
 )
 from .sync import PlaybackClock, archive_skew_ms, capture_needs_resync
 
@@ -232,19 +233,23 @@ def _run(args, parser, intervals=None, skipped_intervals=None):
             parser.error("reference comparison requires a local archive")
         reference_bounds = None
     else:
-        start_time, end_time = common_archive_interval(args.archive_dir, cameras)
         if args.compare_reference:
+            start_time, end_time = common_archive_interval(
+                args.archive_dir, cameras,
+            )
             reference_path = _reference_telemetry_path(args.archive_dir)
             if not reference_path.is_file():
                 parser.error(f"reference telemetry not found: {reference_path}")
             start_time, end_time = _reference_interval(
                 reference_path, start_time, end_time,
             )
-        start_time += timedelta(milliseconds=args.start_offset_ms)
-        if start_time >= end_time:
-            parser.error("start offset leaves no archive to process")
-        reference_bounds = (start_time, end_time)
-        intervals = iter((reference_bounds,))
+            reference_bounds = (start_time, end_time)
+            intervals = iter((reference_bounds,))
+        else:
+            reference_bounds = None
+            intervals = local_archive_intervals(
+                args.archive_dir, cameras, skipped_intervals,
+            )
 
     run_name = __version__
     if args.start_offset_ms:

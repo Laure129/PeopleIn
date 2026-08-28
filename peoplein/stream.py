@@ -235,6 +235,72 @@ def _mkv_files(camera_dir):
     return sorted(files, key=lambda item: item["timestamp"])
 
 
+def local_archive_intervals(
+    archive_dir, cameras, skipped_intervals=None,
+):
+    """Yield synchronized local intervals split at MKV boundaries."""
+    if skipped_intervals is None:
+        skipped_intervals = []
+    videos = {}
+    for camera in cameras:
+        camera_dir = Path(archive_dir) / camera
+        files = _mkv_files(camera_dir)
+        if not files:
+            raise ValueError(f"camera archive is empty: {camera_dir}")
+        videos[camera] = []
+        for item in files:
+            fps, frame_count, start_pts = _video_info(
+                camera_dir / item["name"]
+            )
+            start = item["timestamp"] + timedelta(seconds=start_pts)
+            videos[camera].append((
+                start,
+                start + timedelta(seconds=frame_count / fps),
+            ))
+
+    indexes = {camera: 1 for camera in cameras}
+    active = {camera: videos[camera][0] for camera in cameras}
+    archive_start = min(item[0] for item in active.values())
+    latest_end = max(item[1] for item in active.values())
+    previous_end = None
+    while True:
+        start = max(item[0] for item in active.values())
+        end = min(item[1] for item in active.values())
+        if start < end:
+            _record_skipped_interval(
+                skipped_intervals,
+                previous_end if previous_end is not None else archive_start,
+                start,
+            )
+            log.info("analysis interval ready start=%s end=%s", start, end)
+            yield start, end
+            previous_end = end
+            expired = [
+                camera for camera, item in active.items() if item[1] == end
+            ]
+        else:
+            expired = [
+                camera for camera, item in active.items() if item[1] <= start
+            ]
+
+        available = True
+        for camera in expired:
+            index = indexes[camera]
+            if index >= len(videos[camera]):
+                available = False
+                continue
+            active[camera] = videos[camera][index]
+            indexes[camera] += 1
+            latest_end = max(latest_end, active[camera][1])
+        if not available:
+            _record_skipped_interval(
+                skipped_intervals,
+                previous_end if previous_end is not None else archive_start,
+                latest_end,
+            )
+            return
+
+
 def _file_covering(files, target):
     index = bisect_right([item["timestamp"] for item in files], target) - 1
     if index < 0:
