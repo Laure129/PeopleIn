@@ -256,11 +256,11 @@ def _run(args, parser, intervals=None, skipped_intervals=None):
     config_snapshot_path = run_dir / "config.toml"
     diagnostics_path = run_dir / "diagnostics.jsonl"
     evidence_dir = run_dir / "evidence"
-    motion_activity_dir = run_dir / "motion_activity"
+    door_motion_activity_dir = run_dir / "door_motion_activity"
     existing = [
         path for path in (
             telemetry_path, summary_path, log_path, config_snapshot_path,
-            diagnostics_path, evidence_dir, motion_activity_dir,
+            diagnostics_path, evidence_dir, door_motion_activity_dir,
         )
         if path.exists()
     ]
@@ -292,7 +292,7 @@ def _run(args, parser, intervals=None, skipped_intervals=None):
         app_version=__version__,
         diagnostics_path=diagnostics_path,
         evidence_dir=evidence_dir,
-        motion_activity_dir=motion_activity_dir,
+        door_motion_activity_dir=door_motion_activity_dir,
         reference_events=(
             _reference_events(reference_path, *reference_bounds)
             if reference_path else ()
@@ -354,7 +354,7 @@ def _run(args, parser, intervals=None, skipped_intervals=None):
                     "log": log_path.name,
                     "diagnostics": diagnostics_path.name,
                     "evidence": evidence_dir.name,
-                    "motion_activity": motion_activity_dir.name,
+                    "door_motion_activity": door_motion_activity_dir.name,
                     "config": config_snapshot_path.name,
                 },
                 "command": command,

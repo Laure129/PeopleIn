@@ -50,9 +50,9 @@ class DoorCounterTest(unittest.TestCase):
             "entrance": deque((frame, started, []) for frame in frames),
         }
         counter.motion = {}
-        counter.motion_activity = []
+        counter.door_motion_activity = []
         counter.full_camera_motion_activity = []
-        counter.motion_activity_start = 0
+        counter.door_motion_activity_start = 0
         counter.full_camera_motion_activity_start = 0
         counter.tracks = {"entrance": {}}
         counter.frame_history = {"entrance": deque(maxlen=7)}
@@ -69,9 +69,9 @@ class DoorCounterTest(unittest.TestCase):
     def test_stream_reset_discards_only_temporal_state(self):
         counter = DoorCounter.__new__(DoorCounter)
         counter.events = [{"direction": "entry"}]
-        counter.motion_activity = [{"camera": "loby"}]
+        counter.door_motion_activity = [{"camera": "loby"}]
         counter.full_camera_motion_activity = [{"camera": "loby"}]
-        counter.motion_activity_start = 0
+        counter.door_motion_activity_start = 0
         counter.full_camera_motion_activity_start = 0
         counter.tracks = {"entrance": {1: object()}}
         counter.pending_frames = {"entrance": deque([object()])}
@@ -84,11 +84,13 @@ class DoorCounterTest(unittest.TestCase):
         counter.reset_stream()
 
         self.assertEqual(counter.events, [{"direction": "entry"}])
-        self.assertEqual(counter.motion_activity, [{"camera": "loby"}])
+        self.assertEqual(
+            counter.door_motion_activity, [{"camera": "loby"}],
+        )
         self.assertEqual(
             counter.full_camera_motion_activity, [{"camera": "loby"}],
         )
-        self.assertEqual(counter.motion_activity_start, 1)
+        self.assertEqual(counter.door_motion_activity_start, 1)
         self.assertEqual(counter.full_camera_motion_activity_start, 1)
         self.assertFalse(counter.tracks["entrance"])
         self.assertFalse(counter.pending_frames["entrance"])
@@ -322,7 +324,7 @@ class DoorCounterTest(unittest.TestCase):
             database = Path(directory) / "people.sqlite3"
             diagnostics = Path(directory) / "diagnostics.jsonl"
             evidence = Path(directory) / "evidence"
-            motion_activity = Path(directory) / "motion_activity"
+            door_motion_activity = Path(directory) / "door_motion_activity"
             counter = DoorCounter(
                 cameras=cameras,
                 model_path="unused",
@@ -334,7 +336,7 @@ class DoorCounterTest(unittest.TestCase):
                 detector=ScoredDetector(detections),
                 diagnostics_path=diagnostics,
                 evidence_dir=evidence,
-                motion_activity_dir=motion_activity,
+                door_motion_activity_dir=door_motion_activity,
             )
             self.assertIsNone(
                 counter.snapshot()["passage_confirmation_ratio"]
@@ -358,7 +360,9 @@ class DoorCounterTest(unittest.TestCase):
                     for camera in cameras for offset in range(-3, 4)
                 },
             )
-            self.assertEqual(len(list(motion_activity.glob("*.jpg"))), 1)
+            self.assertEqual(
+                len(list(door_motion_activity.glob("*.jpg"))), 1,
+            )
             image = cv2.imread(str(
                 evidence / "passage_1_entrance_frame_+0.jpg"
             ))
@@ -393,7 +397,7 @@ class DoorCounterTest(unittest.TestCase):
                 "line_crossing", "passage_agreement",
             }.issubset(events))
             self.assertEqual(counter.diagnostic_summary(), {
-                "motion_activity_intervals": [{
+                "door_motion_activity_intervals": [{
                     "camera": "loby",
                     "start": "2026-01-02T03:04:08.000",
                     "end": "2026-01-02T03:04:08.000",
@@ -408,7 +412,7 @@ class DoorCounterTest(unittest.TestCase):
                     "direction": "entry",
                     "camera": "entrance",
                     "confirmation": {
-                        "activity": "motion_activity",
+                        "activity": "door_motion_activity",
                         "camera": "loby",
                         "timestamp": "2026-01-02T03:04:08.000",
                         "delta_seconds": 0.0,
@@ -462,7 +466,7 @@ class DoorCounterTest(unittest.TestCase):
 
         self.assertEqual(detector.frames, list(range(1, 12)))
         self.assertEqual(counter.diagnostic_summary(), {
-            "motion_activity_intervals": [],
+            "door_motion_activity_intervals": [],
             "full_camera_motion_activity_intervals": [{
                 "camera": "loby",
                 "start": "2026-01-02T00:00:06.000",
@@ -490,11 +494,11 @@ class DoorCounterTest(unittest.TestCase):
             )
         ]
         counter.agreement_seconds = 15
-        counter.motion_activity = [{
+        counter.door_motion_activity = [{
             "timestamp": started + timedelta(seconds=10),
             "camera": "loby",
             "motion_points": 1,
-            "activity": "motion_activity",
+            "activity": "door_motion_activity",
         }]
         counter.full_camera_motion_activity = [
             {
@@ -505,7 +509,7 @@ class DoorCounterTest(unittest.TestCase):
             }
             for timestamp in (started, started + timedelta(seconds=100))
         ]
-        counter.motion_activity_start = 0
+        counter.door_motion_activity_start = 0
         counter.full_camera_motion_activity_start = 0
         counter.diagnostics = None
 
@@ -513,19 +517,19 @@ class DoorCounterTest(unittest.TestCase):
 
         self.assertEqual(
             [event["motion_candidate"]["activity"] for event in counter.events],
-            ["motion_activity", "full_camera_motion_activity"],
+            ["door_motion_activity", "full_camera_motion_activity"],
         )
 
-    def test_motion_activity_merges_only_gaps_under_three_seconds(self):
+    def test_activity_merges_only_gaps_under_three_seconds(self):
         started = datetime(2026, 1, 2, 3, 4, 5)
         counter = DoorCounter.__new__(DoorCounter)
         counter.motion = {"loby": {}}
-        counter.motion_activity = [
+        activities = [
             {"camera": "loby", "timestamp": started + timedelta(seconds=gap)}
             for gap in (0, 2, 5, 7)
         ]
 
-        self.assertEqual(counter._motion_activity_intervals(), [
+        self.assertEqual(counter._activity_intervals(activities), [
             {
                 "camera": "loby",
                 "start": "2026-01-02T03:04:05.000",

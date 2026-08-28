@@ -120,7 +120,8 @@ class DoorCounter:
     def __init__(
         self, cameras, model_path, confidence, agreement_seconds,
         crossing_margin_px, database_path, app_version, detector=None,
-        diagnostics_path=None, evidence_dir=None, motion_activity_dir=None,
+        diagnostics_path=None, evidence_dir=None,
+        door_motion_activity_dir=None,
         reference_events=(),
     ):
         self.cameras = cameras
@@ -140,9 +141,9 @@ class DoorCounter:
         self.tracks = {camera: {} for camera in cameras}
         self.next_track_id = 1
         self.events = []
-        self.motion_activity = []
+        self.door_motion_activity = []
         self.full_camera_motion_activity = []
-        self.motion_activity_start = 0
+        self.door_motion_activity_start = 0
         self.full_camera_motion_activity_start = 0
         self.pending_frames = {
             camera: deque() for camera in cameras
@@ -161,11 +162,12 @@ class DoorCounter:
         self.evidence_dir = Path(evidence_dir) if evidence_dir else None
         if self.evidence_dir:
             self.evidence_dir.mkdir(parents=True, exist_ok=False)
-        self.motion_activity_dir = (
-            Path(motion_activity_dir) if motion_activity_dir else None
+        self.door_motion_activity_dir = (
+            Path(door_motion_activity_dir)
+            if door_motion_activity_dir else None
         )
-        if self.motion_activity_dir:
-            self.motion_activity_dir.mkdir(parents=True, exist_ok=False)
+        if self.door_motion_activity_dir:
+            self.door_motion_activity_dir.mkdir(parents=True, exist_ok=False)
         self.diagnostics = None
         if diagnostics_path:
             path = Path(diagnostics_path)
@@ -176,32 +178,33 @@ class DoorCounter:
         geometry = self.cameras[camera]
         if camera in self.motion:
             started = time.monotonic()
-            motion_points, flow_vectors, full_camera_motion_points = \
+            door_motion_points, flow_vectors, full_camera_motion_points = \
                 self._motion_flow(camera, frame)
             inference_ms = round((time.monotonic() - started) * 1000, 3)
             self._diagnostic(
                 "motion_flow", timestamp, camera,
                 inference_ms=inference_ms,
-                motion_points=motion_points,
+                door_motion_points=door_motion_points,
                 full_camera_motion_points=full_camera_motion_points,
             )
             self.pending_frames[camera].append((
                 frame.copy(), timestamp, flow_vectors,
             ))
-            if motion_points >= geometry["motion_min_points"]:
-                self.motion_activity.append({
+            if door_motion_points >= geometry["motion_min_points"]:
+                self.door_motion_activity.append({
                     "timestamp": timestamp,
                     "camera": camera,
-                    "motion_points": motion_points,
-                    "activity": "motion_activity",
+                    "motion_points": door_motion_points,
+                    "activity": "door_motion_activity",
                 })
-                if self.motion_activity_dir:
+                if self.door_motion_activity_dir:
                     self._save_evidence_frame(
-                        "motion_activity",
-                        f"{len(self.motion_activity)}_points_{motion_points}",
+                        "door_motion_activity",
+                        f"{len(self.door_motion_activity)}_points_"
+                        f"{door_motion_points}",
                         timestamp, camera, 0,
                         (frame, timestamp, flow_vectors),
-                        self.motion_activity_dir,
+                        self.door_motion_activity_dir,
                     )
             if full_camera_motion_points >= geometry["motion_min_points"]:
                 self.full_camera_motion_activity.append({
@@ -211,7 +214,7 @@ class DoorCounter:
                     "activity": "full_camera_motion_activity",
                 })
             if (
-                motion_points >= geometry["motion_min_points"]
+                door_motion_points >= geometry["motion_min_points"]
                 or full_camera_motion_points >= geometry["motion_min_points"]
             ):
                 self._match_motion(timestamp)
@@ -565,8 +568,8 @@ class DoorCounter:
             if not force and age <= self.agreement_seconds:
                 continue
             door_candidates = [
-                candidate for candidate in self.motion_activity[
-                    self.motion_activity_start:
+                candidate for candidate in self.door_motion_activity[
+                    self.door_motion_activity_start:
                 ]
                 if abs((event["timestamp"] - candidate["timestamp"])
                        .total_seconds()) <= self.agreement_seconds
@@ -810,9 +813,11 @@ class DoorCounter:
 
     def diagnostic_summary(self):
         return {
-            "motion_activity_intervals": self._motion_activity_intervals(),
+            "door_motion_activity_intervals": self._activity_intervals(
+                self.door_motion_activity,
+            ),
             "full_camera_motion_activity_intervals": (
-                self._motion_activity_intervals(
+                self._activity_intervals(
                     self.full_camera_motion_activity,
                 )
             ),
@@ -821,8 +826,7 @@ class DoorCounter:
             ],
         }
 
-    def _motion_activity_intervals(self, activities=None):
-        activities = self.motion_activity if activities is None else activities
+    def _activity_intervals(self, activities):
         result = []
         for camera in self.motion:
             previous = None
@@ -889,7 +893,7 @@ class DoorCounter:
         for state in self.motion.values():
             state["previous_gray"] = None
         self.pending_evidence.clear()
-        self.motion_activity_start = len(self.motion_activity)
+        self.door_motion_activity_start = len(self.door_motion_activity)
         self.full_camera_motion_activity_start = len(
             self.full_camera_motion_activity
         )
