@@ -669,6 +669,7 @@ class DoorCounter:
                 for offset, snapshot in zip(range(-3, 4), window):
                     self._save_evidence_frame(
                         kind, event_id, timestamp, camera, offset, snapshot,
+                        direction=direction,
                     )
         self.pending_evidence = pending
 
@@ -690,7 +691,7 @@ class DoorCounter:
 
     def _save_evidence_frame(
         self, kind, event_id, timestamp, camera, offset, snapshot,
-        directory=None,
+        directory=None, direction=None,
     ):
         frame, frame_time, labels = snapshot
         annotated = frame.copy()
@@ -756,7 +757,8 @@ class DoorCounter:
             0.45, (255, 255, 255), 1, cv2.LINE_AA,
         )
         target = (directory or self.evidence_dir) / (
-            f"{kind}_{event_id}_{camera}_frame_{offset:+d}.jpg"
+            f"{kind}_{event_id}_{f'{direction}_' if direction else ''}"
+            f"{camera}_frame_{offset:+d}.jpg"
         )
         if not cv2.imwrite(str(target), annotated):
             raise RuntimeError(f"cannot write evidence image: {target}")

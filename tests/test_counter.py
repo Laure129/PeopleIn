@@ -216,15 +216,15 @@ class DoorCounterTest(unittest.TestCase):
             self.assertEqual(
                 {path.name for path in evidence.iterdir()},
                 {
-                    f"passage_1_{camera}_frame_{offset:+d}.jpg"
+                    f"passage_1_entry_{camera}_frame_{offset:+d}.jpg"
                     for camera in cameras
                     for offset in range(-3, 4)
                 } | {
-                    f"reference_entry_2_{camera}_frame_{offset:+d}.jpg"
+                    f"reference_entry_2_entry_{camera}_frame_{offset:+d}.jpg"
                     for camera in cameras
                     for offset in range(-3, 4)
                 } | {
-                    f"reference_exit_1_{camera}_frame_{offset:+d}.jpg"
+                    f"reference_exit_1_exit_{camera}_frame_{offset:+d}.jpg"
                     for camera in cameras
                     for offset in range(-3, 4)
                 },
@@ -356,7 +356,7 @@ class DoorCounterTest(unittest.TestCase):
             self.assertEqual(
                 {path.name for path in evidence.iterdir()},
                 {
-                    f"passage_1_{camera}_frame_{offset:+d}.jpg"
+                    f"passage_1_entry_{camera}_frame_{offset:+d}.jpg"
                     for camera in cameras for offset in range(-3, 4)
                 },
             )
@@ -364,11 +364,11 @@ class DoorCounterTest(unittest.TestCase):
                 len(list(door_motion_activity.glob("*.jpg"))), 1,
             )
             image = cv2.imread(str(
-                evidence / "passage_1_entrance_frame_+0.jpg"
+                evidence / "passage_1_entry_entrance_frame_+0.jpg"
             ))
             self.assertLess(int(image[60, 70].max()), 80)
             image = cv2.imread(str(
-                evidence / "passage_1_loby_frame_+0.jpg"
+                evidence / "passage_1_entry_loby_frame_+0.jpg"
             ))
             self.assertTrue(np.any(
                 (image[:, :, 1] > 150)
