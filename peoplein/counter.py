@@ -141,7 +141,9 @@ class DoorCounter:
         self.next_track_id = 1
         self.events = []
         self.motion_activity = []
+        self.full_camera_motion_activity = []
         self.motion_activity_start = 0
+        self.full_camera_motion_activity_start = 0
         self.pending_frames = {
             camera: deque() for camera in cameras
         }
@@ -174,12 +176,14 @@ class DoorCounter:
         geometry = self.cameras[camera]
         if camera in self.motion:
             started = time.monotonic()
-            motion_points, flow_vectors = self._motion_flow(camera, frame)
+            motion_points, flow_vectors, full_camera_motion_points = \
+                self._motion_flow(camera, frame)
             inference_ms = round((time.monotonic() - started) * 1000, 3)
             self._diagnostic(
                 "motion_flow", timestamp, camera,
                 inference_ms=inference_ms,
                 motion_points=motion_points,
+                full_camera_motion_points=full_camera_motion_points,
             )
             self.pending_frames[camera].append((
                 frame.copy(), timestamp, flow_vectors,
@@ -189,6 +193,7 @@ class DoorCounter:
                     "timestamp": timestamp,
                     "camera": camera,
                     "motion_points": motion_points,
+                    "activity": "motion_activity",
                 })
                 if self.motion_activity_dir:
                     self._save_evidence_frame(
@@ -198,6 +203,17 @@ class DoorCounter:
                         (frame, timestamp, flow_vectors),
                         self.motion_activity_dir,
                     )
+            if full_camera_motion_points >= geometry["motion_min_points"]:
+                self.full_camera_motion_activity.append({
+                    "timestamp": timestamp,
+                    "camera": camera,
+                    "motion_points": full_camera_motion_points,
+                    "activity": "full_camera_motion_activity",
+                })
+            if (
+                motion_points >= geometry["motion_min_points"]
+                or full_camera_motion_points >= geometry["motion_min_points"]
+            ):
                 self._match_motion(timestamp)
             self._flush_frames(timestamp)
             return
@@ -230,7 +246,9 @@ class DoorCounter:
             elif any(
                 abs((timestamp - activity["timestamp"]).total_seconds())
                 <= PERSON_ANALYSIS_WINDOW_SECONDS
-                for activity in self.motion_activity[self.motion_activity_start:]
+                for activity in self.full_camera_motion_activity[
+                    self.full_camera_motion_activity_start:
+                ]
             ):
                 self._analyze_people(camera, frame, timestamp)
             else:
@@ -344,7 +362,7 @@ class DoorCounter:
         previous = state["previous_gray"]
         state["previous_gray"] = gray
         if previous is None:
-            return 0, []
+            return 0, [], 0
         if state["mask"] is None:
             roi = np.zeros(gray.shape, dtype=np.uint8)
             band = np.zeros_like(roi)
@@ -354,12 +372,27 @@ class DoorCounter:
                 geometry["motion_band_width_px"] * 2,
             )
             state["mask"] = cv2.bitwise_and(roi, band)
+        vectors = self._flow_vectors(
+            previous, gray, state["mask"],
+            geometry["motion_min_displacement_px"],
+        )
+        door_vectors = [
+            (start, end) for start, end in vectors
+            if self._motion_direction_allowed(start, end, geometry)
+        ]
+        full_camera_vectors = self._flow_vectors(
+            previous, gray, None, geometry["motion_min_displacement_px"],
+        )
+        return len(door_vectors), door_vectors, len(full_camera_vectors)
+
+    @staticmethod
+    def _flow_vectors(previous, gray, mask, minimum_displacement):
         points = cv2.goodFeaturesToTrack(
-            previous, mask=state["mask"], maxCorners=300,
+            previous, mask=mask, maxCorners=300,
             qualityLevel=0.01, minDistance=4, blockSize=5,
         )
         if points is None:
-            return 0, []
+            return []
         current, status, _ = cv2.calcOpticalFlowPyrLK(
             previous, gray, points, None, winSize=(21, 21), maxLevel=3,
             criteria=(
@@ -367,7 +400,7 @@ class DoorCounter:
             ),
         )
         if current is None or status is None:
-            return 0, []
+            return []
         backward, backward_status, _ = cv2.calcOpticalFlowPyrLK(
             gray, previous, current, None, winSize=(21, 21), maxLevel=3,
             criteria=(
@@ -375,7 +408,7 @@ class DoorCounter:
             ),
         )
         if backward is None or backward_status is None:
-            return 0, []
+            return []
         vectors = []
         for start, end, returned, ok, backward_ok in zip(
             points.reshape(-1, 2), current.reshape(-1, 2),
@@ -383,12 +416,10 @@ class DoorCounter:
         ):
             if not ok or not backward_ok or math.dist(start, returned) > 1.5:
                 continue
-            if math.dist(start, end) < geometry["motion_min_displacement_px"]:
-                continue
-            if not self._motion_direction_allowed(start, end, geometry):
+            if math.dist(start, end) < minimum_displacement:
                 continue
             vectors.append((start, end))
-        return len(vectors), vectors
+        return vectors
 
     @staticmethod
     def _motion_direction_allowed(start, end, geometry):
@@ -533,9 +564,16 @@ class DoorCounter:
             age = (timestamp - event["timestamp"]).total_seconds()
             if not force and age <= self.agreement_seconds:
                 continue
-            candidates = [
+            door_candidates = [
                 candidate for candidate in self.motion_activity[
                     self.motion_activity_start:
+                ]
+                if abs((event["timestamp"] - candidate["timestamp"])
+                       .total_seconds()) <= self.agreement_seconds
+            ]
+            candidates = door_candidates or [
+                candidate for candidate in self.full_camera_motion_activity[
+                    self.full_camera_motion_activity_start:
                 ]
                 if abs((event["timestamp"] - candidate["timestamp"])
                        .total_seconds()) <= self.agreement_seconds
@@ -562,6 +600,7 @@ class DoorCounter:
                 direction=event["direction"],
                 delta_seconds=round(delta, 3),
                 motion_points=candidate["motion_points"],
+                activity=candidate["activity"],
             )
 
     def _expire_events(self, timestamp, force=False):
@@ -772,17 +811,23 @@ class DoorCounter:
     def diagnostic_summary(self):
         return {
             "motion_activity_intervals": self._motion_activity_intervals(),
+            "full_camera_motion_activity_intervals": (
+                self._motion_activity_intervals(
+                    self.full_camera_motion_activity,
+                )
+            ),
             "passages": [
                 self._passage_summary(event) for event in self.events
             ],
         }
 
-    def _motion_activity_intervals(self):
+    def _motion_activity_intervals(self, activities=None):
+        activities = self.motion_activity if activities is None else activities
         result = []
         for camera in self.motion:
             previous = None
             for activity in (
-                item for item in self.motion_activity
+                item for item in activities
                 if item["camera"] == camera
             ):
                 timestamp = activity["timestamp"]
@@ -814,6 +859,7 @@ class DoorCounter:
             "camera": observation["camera"],
             "confirmation": (
                 {
+                    "activity": motion["activity"],
                     "camera": motion["camera"],
                     "timestamp": motion["timestamp"].isoformat(
                         timespec="milliseconds"
@@ -844,6 +890,9 @@ class DoorCounter:
             state["previous_gray"] = None
         self.pending_evidence.clear()
         self.motion_activity_start = len(self.motion_activity)
+        self.full_camera_motion_activity_start = len(
+            self.full_camera_motion_activity
+        )
 
     def close(self):
         if self.diagnostics:
