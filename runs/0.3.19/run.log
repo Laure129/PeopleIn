@@ -1,0 +1,10 @@
+2026-08-28 14:26:12,414 INFO root: benchmark host is clear
+2026-08-28 14:26:12,765 INFO __main__: run started cameras=entrance,loby archive=/app/resources/archive_debug_cache reference=/app/resources/archive_people_telemetry.jsonl
+2026-08-28 14:26:53,770 INFO peoplein.stream: decoded loby/20260713-235327.mkv: 3575 frames
+2026-08-28 14:27:29,262 INFO peoplein.stream: decoded entrance/20260713-235604.mkv: 1500 frames
+2026-08-28 14:27:58,918 INFO peoplein.stream: decoded entrance/20260714-000104.mkv: 715 frames
+2026-08-28 14:27:59,002 INFO peoplein.stream: decoded loby/20260713-235827.mkv: 7500 frames
+2026-08-28 14:27:59,009 INFO __main__: analysis interval completed start=2026-07-13 23:56:04 end=2026-07-14 00:03:27 frames=13290 ticks=2215 entered=4 exited=0 people_inside=4
+2026-08-28 14:27:59,013 INFO __main__: summary updated end=2026-07-14 00:03:27
+2026-08-28 14:27:59,036 INFO __main__: summary updated end=2026-07-14 00:03:27
+2026-08-28 14:27:59,036 INFO __main__: run completed seconds=443 frames=13290 ticks=2215 max_skew_ms=0 occupancy_exact_match_pct=99.774266 video_duration_seconds=443.0 processing_time_seconds=106.27 people_inside=4 passage_confirmation_ratio=1.0

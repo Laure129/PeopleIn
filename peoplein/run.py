@@ -15,6 +15,7 @@ from .config import (
     CONFIG_PATH, DATABASE_PATH, PROJECT_DIR,
     archive_dir as configured_archive_dir, archive_server,
     debug_mode, door_counter_settings, frame_interval_ms,
+    motion_frame_interval_ms,
     prepare_benchmark_enabled, stream_cameras,
 )
 from .counter import DoorCounter
@@ -24,7 +25,7 @@ from .stream import (
     common_archive_interval, local_archive_intervals, remote_archive,
     start_decoders,
 )
-from .sync import PlaybackClock, archive_skew_ms, capture_needs_resync
+from .sync import archive_skew_ms
 
 REFERENCE_TELEMETRY = {
     "archive_debug_cache": "archive_people_telemetry.jsonl",
@@ -155,11 +156,24 @@ def main():
 
 def _analyze_interval(
     archive_dir, cameras, counter, start_time, end_time, interval_ms,
-    *, track_reads=None,
+    *, motion_interval_ms=None, track_reads=None,
 ):
-    plan = build_archive_plan(
-        archive_dir, start_time, end_time, cameras, interval_ms,
-    )
+    motion_interval_ms = motion_interval_ms or interval_ms
+    if interval_ms % motion_interval_ms:
+        raise ValueError("motion frame interval must divide frame interval")
+    sample_intervals = {
+        camera: (
+            motion_interval_ms if camera in counter.motion else interval_ms
+        )
+        for camera in cameras
+    }
+    plan = {
+        camera: build_archive_plan(
+            archive_dir, start_time, end_time, (camera,),
+            sample_intervals[camera],
+        )[camera]
+        for camera in cameras
+    }
     counts = Counter(
         (ref["camera"], ref["mkv"], ref["frame_index"])
         for refs in plan.values()
@@ -174,35 +188,38 @@ def _analyze_interval(
         threads = start_decoders(
             archive_dir, plan, store, debug=not track_reads,
         )
-    clock = PlaybackClock(start_time, interval_ms)
-    decoded = 0
     max_skew = 0
-
-    for tick in range(len(plan[cameras[0]])):
-        expected_time = clock.expected_archive_time
+    ticks = len(plan[cameras[0]])
+    for tick in range(ticks):
         stats = {}
         for camera in cameras:
-            ref = plan[camera][tick]
-            if capture_needs_resync(
-                expected_time, ref["mkv_pts_time"], clock.archive_interval,
-            ):
-                raise RuntimeError(
-                    f"{camera} drifted from playback clock at tick {tick}"
-                )
-            frame = store.get(camera, ref["mkv"], ref["frame_index"])
-            if frame.shape != (FRAME_HEIGHT, FRAME_WIDTH, 3):
-                raise RuntimeError(f"unexpected frame shape: {frame.shape}")
-            counter.update(camera, frame, ref["mkv_pts_time"])
+            ref = plan[camera][
+                tick * interval_ms // sample_intervals[camera]
+            ]
             stats[camera] = {
                 "playback_tick": tick,
                 "mkv_pts_timestamp": ref["mkv_pts_time"].timestamp(),
             }
-            decoded += 1
         skew = archive_skew_ms(stats) or 0
         if skew > interval_ms:
             raise RuntimeError(f"camera skew is {skew} ms at tick {tick}")
         max_skew = max(max_skew, skew)
-        clock.advance()
+
+    samples = [
+        (
+            ref["mkv_pts_time"], order, camera, ref
+        )
+        for order, camera in enumerate(cameras)
+        for ref in plan[camera]
+    ]
+    samples.sort(
+        key=lambda item: item[:2],
+    )
+    for timestamp, _, camera, ref in samples:
+        frame = store.get(camera, ref["mkv"], ref["frame_index"])
+        if frame.shape != (FRAME_HEIGHT, FRAME_WIDTH, 3):
+            raise RuntimeError(f"unexpected frame shape: {frame.shape}")
+        counter.update(camera, frame, timestamp)
 
     for thread in threads:
         thread.join()
@@ -210,10 +227,10 @@ def _analyze_interval(
     log.info(
         "analysis interval completed start=%s end=%s frames=%d ticks=%d "
         "entered=%d exited=%d people_inside=%d",
-        start_time, end_time, decoded, clock.tick,
+        start_time, end_time, len(samples), ticks,
         result["entered_total"], result["exited_total"], result["people_inside"],
     )
-    return decoded, clock.tick, max_skew, result
+    return len(samples), ticks, max_skew, result
 
 
 def _run(args, parser, intervals=None, skipped_intervals=None):
@@ -291,6 +308,10 @@ def _run(args, parser, intervals=None, skipped_intervals=None):
     if debug_mode():
         DATABASE_PATH.unlink(missing_ok=True)
 
+    interval_ms = frame_interval_ms()
+    motion_interval_ms = motion_frame_interval_ms()
+    if interval_ms % motion_interval_ms:
+        raise ValueError("motion frame interval must divide frame interval")
     counter = DoorCounter(
         **door_counter_settings(),
         database_path=DATABASE_PATH,
@@ -298,6 +319,7 @@ def _run(args, parser, intervals=None, skipped_intervals=None):
         diagnostics_path=diagnostics_path,
         evidence_dir=evidence_dir,
         door_motion_activity_dir=door_motion_activity_dir,
+        motion_profile_bin_frames=interval_ms // motion_interval_ms,
         reference_events=(
             _reference_events(reference_path, *reference_bounds)
             if reference_path else ()
@@ -310,7 +332,6 @@ def _run(args, parser, intervals=None, skipped_intervals=None):
     started = time.monotonic()
 
     try:
-        interval_ms = frame_interval_ms()
         decoded = 0
         ticks = 0
         max_skew = 0
@@ -350,6 +371,9 @@ def _run(args, parser, intervals=None, skipped_intervals=None):
                     "entered_total": result["entered_total"],
                     "exited_total": result["exited_total"],
                     "people_inside": result["people_inside"],
+                    "door_profile_entered_total": result.get(
+                        "door_profile_entered_total", 0,
+                    ),
                     "passage_confirmation_ratio": result[
                         "passage_confirmation_ratio"
                     ],
@@ -398,6 +422,7 @@ def _run(args, parser, intervals=None, skipped_intervals=None):
                 ) = _analyze_interval(
                     args.archive_dir, cameras, counter,
                     batch_start, batch_end, interval_ms,
+                    motion_interval_ms=motion_interval_ms,
                     track_reads=False if remote else None,
                 )
                 decoded += batch_decoded

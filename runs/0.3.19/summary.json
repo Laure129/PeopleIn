@@ -1,0 +1,151 @@
+{
+  "format_version": 1,
+  "app_version": "0.3.19",
+  "run": {
+    "source_archive": "resources/archive_debug_cache",
+    "start_time": "2026-07-13T23:56:04.000",
+    "end_time": "2026-07-14T00:03:27.000",
+    "start_offset_ms": 0,
+    "time_zone": null,
+    "video_duration_seconds": 443.0,
+    "processing_time_seconds": 106.27,
+    "skipped_intervals": [],
+    "reference_telemetry": "resources/archive_people_telemetry.jsonl"
+  },
+  "result": {
+    "entered_total": 4,
+    "exited_total": 0,
+    "people_inside": 4,
+    "door_profile_entered_total": 4,
+    "passage_confirmation_ratio": 1.0,
+    "occupancy_exact_match_pct": 99.774266
+  },
+  "door_motion_activity_intervals": [
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:17.400",
+      "end": "2026-07-13T23:57:19.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:58.200",
+      "end": "2026-07-13T23:58:01.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:53.600",
+      "end": "2026-07-13T23:58:58.400"
+    }
+  ],
+  "full_camera_motion_activity_intervals": [
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:01.600",
+      "end": "2026-07-13T23:57:05.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:13.200",
+      "end": "2026-07-13T23:57:19.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:45.400",
+      "end": "2026-07-13T23:57:45.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:52.000",
+      "end": "2026-07-13T23:57:54.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:58.200",
+      "end": "2026-07-13T23:58:03.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:07.800",
+      "end": "2026-07-13T23:58:07.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:28.200",
+      "end": "2026-07-13T23:58:28.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:50.400",
+      "end": "2026-07-13T23:58:58.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:59:39.800",
+      "end": "2026-07-13T23:59:42.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-14T00:00:36.600",
+      "end": "2026-07-14T00:00:36.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-14T00:02:02.800",
+      "end": "2026-07-14T00:02:02.800"
+    }
+  ],
+  "passages": [
+    {
+      "timestamp": "2026-07-13T23:57:20.200",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "activity": "door_motion_activity",
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:57:19.800",
+        "delta_seconds": 0.4
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:01.000",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "activity": "door_motion_activity",
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:01.000",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:56.800",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "activity": "door_motion_activity",
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:56.400",
+        "delta_seconds": 0.4
+      }
+    },
+    {
+      "timestamp": "2026-07-13T23:58:58.800",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "activity": "door_motion_activity",
+        "camera": "loby",
+        "timestamp": "2026-07-13T23:58:58.400",
+        "delta_seconds": 0.4
+      }
+    }
+  ],
+  "artifacts": {
+    "log": "run.log",
+    "diagnostics": "diagnostics.jsonl",
+    "evidence": "evidence",
+    "door_motion_activity": "door_motion_activity",
+    "config": "config.toml"
+  },
+  "command": "/usr/local/bin/python -m peoplein.run --archive-dir /app/resources/archive_debug_cache --compare-reference"
+}

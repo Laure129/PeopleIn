@@ -3,7 +3,7 @@
 import json
 import math
 import time
-from collections import deque
+from collections import Counter, deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -16,6 +16,8 @@ from .database import record_passage
 DIAGNOSTIC_CONFIDENCE = 0.01
 MOTION_ACTIVITY_GAP_SECONDS = 3
 PERSON_ANALYSIS_WINDOW_SECONDS = 5
+MOTION_PROFILE_MIN_BINS = 2
+MOTION_PROFILE_SCAN_SECONDS = 6
 
 
 class PersonDetector:
@@ -122,6 +124,7 @@ class DoorCounter:
         crossing_margin_px, database_path, app_version, detector=None,
         diagnostics_path=None, evidence_dir=None,
         door_motion_activity_dir=None,
+        motion_profile_bin_frames=5,
         reference_events=(),
     ):
         self.cameras = cameras
@@ -130,10 +133,23 @@ class DoorCounter:
             model_path, DIAGNOSTIC_CONFIDENCE,
         )
         self.motion = {
-            camera: {"previous_gray": None, "mask": None}
+            camera: {
+                "previous_gray": None,
+                "activity_gray": None,
+                "activity_samples": 0,
+                "mask": None,
+            }
             for camera, geometry in cameras.items()
             if "motion_roi" in geometry
         }
+        if motion_profile_bin_frames <= 0:
+            raise ValueError("motion_profile_bin_frames must be positive")
+        self.motion_profile_bin_frames = motion_profile_bin_frames
+        self.motion_profiles = {
+            camera: self._new_motion_profile()
+            for camera in self.motion
+        }
+        self.door_profile_entries = []
         self.agreement_seconds = agreement_seconds
         self.crossing_margin_px = crossing_margin_px
         self.database_path = database_path
@@ -178,15 +194,19 @@ class DoorCounter:
         geometry = self.cameras[camera]
         if camera in self.motion:
             started = time.monotonic()
-            door_motion_points, flow_vectors, full_camera_motion_points = \
-                self._motion_flow(camera, frame)
+            (
+                door_motion_points, flow_vectors,
+                full_camera_motion_points, profile_points,
+            ) = self._motion_flow(camera, frame)
             inference_ms = round((time.monotonic() - started) * 1000, 3)
             self._diagnostic(
                 "motion_flow", timestamp, camera,
                 inference_ms=inference_ms,
                 door_motion_points=door_motion_points,
                 full_camera_motion_points=full_camera_motion_points,
+                motion_profile_points=profile_points,
             )
+            self._update_motion_profile(camera, timestamp, profile_points)
             self.pending_frames[camera].append((
                 frame.copy(), timestamp, flow_vectors,
             ))
@@ -365,7 +385,8 @@ class DoorCounter:
         previous = state["previous_gray"]
         state["previous_gray"] = gray
         if previous is None:
-            return 0, [], 0
+            state["activity_gray"] = gray
+            return 0, [], 0, {"entry": 0, "exit": 0}
         if state["mask"] is None:
             roi = np.zeros(gray.shape, dtype=np.uint8)
             band = np.zeros_like(roi)
@@ -375,18 +396,127 @@ class DoorCounter:
                 geometry["motion_band_width_px"] * 2,
             )
             state["mask"] = cv2.bitwise_and(roi, band)
-        vectors = self._flow_vectors(
-            previous, gray, state["mask"],
+        profile_minimum = geometry.get(
+            "motion_profile_min_displacement_px",
             geometry["motion_min_displacement_px"],
         )
+        vectors = self._flow_vectors(
+            previous, gray, state["mask"], profile_minimum,
+        )
+        profile_points = Counter()
+        for start, end in vectors:
+            if not self._motion_direction_allowed(start, end, geometry):
+                continue
+            direction = (
+                "left_to_right"
+                if self._signed_distance(end, geometry["line"])
+                > self._signed_distance(start, geometry["line"])
+                else "right_to_left"
+            )
+            profile_points[geometry["directions"][direction]] += 1
+        state["activity_samples"] += 1
+        if state["activity_samples"] < self.motion_profile_bin_frames:
+            return 0, [], 0, {
+                direction: profile_points[direction]
+                for direction in ("entry", "exit")
+            }
+        activity_previous = state["activity_gray"]
+        state["activity_gray"] = gray
+        state["activity_samples"] = 0
         door_vectors = [
-            (start, end) for start, end in vectors
+            (start, end) for start, end in self._flow_vectors(
+                activity_previous, gray, state["mask"],
+                geometry["motion_min_displacement_px"],
+            )
             if self._motion_direction_allowed(start, end, geometry)
         ]
         full_camera_vectors = self._flow_vectors(
-            previous, gray, None, geometry["motion_min_displacement_px"],
+            activity_previous, gray, None,
+            geometry["motion_min_displacement_px"],
         )
-        return len(door_vectors), door_vectors, len(full_camera_vectors)
+        return (
+            len(door_vectors), door_vectors, len(full_camera_vectors),
+            {direction: profile_points[direction] for direction in (
+                "entry", "exit",
+            )},
+        )
+
+    @staticmethod
+    def _new_motion_profile():
+        return {
+            "bin_start": None,
+            "samples": 0,
+            "entry_points": 0,
+            "exit_points": 0,
+            "opened_until": None,
+            "active_bins": [],
+        }
+
+    def _update_motion_profile(self, camera, timestamp, points):
+        state = self.motion_profiles[camera]
+        if state["bin_start"] is None:
+            state["bin_start"] = timestamp
+        state["samples"] += 1
+        state["entry_points"] += points["entry"]
+        state["exit_points"] += points["exit"]
+        if state["samples"] < self.motion_profile_bin_frames:
+            return
+        self._motion_profile_bin(
+            camera, state["bin_start"],
+            state["entry_points"], state["exit_points"],
+        )
+        state["bin_start"] = None
+        state["samples"] = 0
+        state["entry_points"] = 0
+        state["exit_points"] = 0
+
+    def _motion_profile_bin(
+        self, camera, timestamp, entry_points, exit_points,
+    ):
+        state = self.motion_profiles[camera]
+        geometry = self.cameras[camera]
+        if exit_points >= geometry.get(
+            "motion_profile_open_min_points", geometry["motion_min_points"],
+        ):
+            self._finish_motion_profile(camera)
+            state["opened_until"] = timestamp + timedelta(
+                seconds=MOTION_PROFILE_SCAN_SECONDS,
+            )
+        if state["opened_until"] is None:
+            return
+        if timestamp > state["opened_until"]:
+            self._finish_motion_profile(camera)
+            state["opened_until"] = None
+            return
+        if entry_points >= geometry.get(
+            "motion_profile_min_points", geometry["motion_min_points"],
+        ):
+            state["active_bins"].append((timestamp, entry_points))
+        else:
+            self._finish_motion_profile(camera)
+
+    def _finish_motion_profile(self, camera):
+        state = self.motion_profiles[camera]
+        bins = state["active_bins"]
+        if len(bins) >= MOTION_PROFILE_MIN_BINS:
+            timestamp, peak = max(bins, key=lambda item: item[1])
+            entry = {
+                "timestamp": timestamp,
+                "camera": camera,
+                "start": bins[0][0],
+                "end": bins[-1][0],
+                "bins": len(bins),
+                "peak_motion_points": peak,
+            }
+            self.door_profile_entries.append(entry)
+            self._diagnostic(
+                "door_profile_entry", timestamp, camera,
+                start=self._timestamp(entry["start"]),
+                end=self._timestamp(entry["end"]),
+                bins=entry["bins"],
+                peak_motion_points=peak,
+            )
+        state["active_bins"] = []
 
     @staticmethod
     def _flow_vectors(previous, gray, mask, minimum_displacement):
@@ -804,6 +934,11 @@ class DoorCounter:
             "entered_total": entered,
             "exited_total": exited,
             "people_inside": max(entered - exited, 0),
+            "door_profile_entered_total": sum(
+                timestamp is None
+                or entry["timestamp"] < timestamp + timedelta(seconds=1)
+                for entry in self.door_profile_entries
+            ),
             "passage_confirmation_ratio": (
                 round(confirmed / len(events), 6)
                 if events else None
@@ -881,6 +1016,8 @@ class DoorCounter:
     def finish(self, timestamp):
         if self.motion:
             self._flush_frames(timestamp, force=True)
+            for camera in self.motion:
+                self._finish_motion_profile(camera)
         self._expire_events(timestamp, force=True)
         self._save_ready_evidence(timestamp, force=True)
 
@@ -894,6 +1031,12 @@ class DoorCounter:
             history.clear()
         for state in self.motion.values():
             state["previous_gray"] = None
+            state["activity_gray"] = None
+            state["activity_samples"] = 0
+        self.motion_profiles = {
+            camera: self._new_motion_profile()
+            for camera in self.motion
+        }
         self.pending_evidence.clear()
         self.door_motion_activity_start = len(self.door_motion_activity)
         self.full_camera_motion_activity_start = len(

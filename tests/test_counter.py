@@ -77,7 +77,12 @@ class DoorCounterTest(unittest.TestCase):
         counter.pending_frames = {"entrance": deque([object()])}
         counter.frame_history = {"entrance": deque([object()], maxlen=7)}
         counter.motion = {
-            "loby": {"previous_gray": object(), "mask": object()},
+            "loby": {
+                "previous_gray": object(),
+                "activity_gray": object(),
+                "activity_samples": 3,
+                "mask": object(),
+            },
         }
         counter.pending_evidence = [object()]
 
@@ -96,8 +101,44 @@ class DoorCounterTest(unittest.TestCase):
         self.assertFalse(counter.pending_frames["entrance"])
         self.assertFalse(counter.frame_history["entrance"])
         self.assertIsNone(counter.motion["loby"]["previous_gray"])
+        self.assertIsNone(counter.motion["loby"]["activity_gray"])
+        self.assertEqual(counter.motion["loby"]["activity_samples"], 0)
         self.assertIsNotNone(counter.motion["loby"]["mask"])
+        self.assertEqual(
+            counter.motion_profiles,
+            {"loby": counter._new_motion_profile()},
+        )
         self.assertFalse(counter.pending_evidence)
+
+    def test_motion_profile_counts_each_low_high_low_person_shape(self):
+        counter = DoorCounter.__new__(DoorCounter)
+        counter.cameras = {"loby": {
+            "motion_min_points": 3,
+            "motion_profile_open_min_points": 5,
+            "motion_profile_min_points": 20,
+        }}
+        counter.motion_profiles = {"loby": counter._new_motion_profile()}
+        counter.door_profile_entries = []
+        counter.diagnostics = None
+        started = datetime(2026, 1, 2)
+
+        for tick, (entry, exit_) in enumerate((
+            (0, 6),
+            (25, 0), (40, 0), (0, 0),
+            (22, 0), (50, 0), (0, 0),
+            (24, 0), (45, 0), (0, 0),
+        )):
+            counter._motion_profile_bin(
+                "loby", started + timedelta(milliseconds=200 * tick),
+                entry, exit_,
+            )
+
+        self.assertEqual(len(counter.door_profile_entries), 3)
+        self.assertEqual(
+            [entry["peak_motion_points"]
+             for entry in counter.door_profile_entries],
+            [40, 50, 45],
+        )
 
     def test_motion_direction_can_be_limited_to_perpendicular(self):
         geometry = {
@@ -134,6 +175,7 @@ class DoorCounterTest(unittest.TestCase):
     def test_snapshot_uses_archive_timestamp(self):
         started = datetime(2026, 1, 2)
         counter = DoorCounter.__new__(DoorCounter)
+        counter.door_profile_entries = []
         counter.events = [{
             "timestamp": started + timedelta(seconds=5, milliseconds=200),
             "direction": "entry",
@@ -337,6 +379,7 @@ class DoorCounterTest(unittest.TestCase):
                 diagnostics_path=diagnostics,
                 evidence_dir=evidence,
                 door_motion_activity_dir=door_motion_activity,
+                motion_profile_bin_frames=1,
             )
             self.assertIsNone(
                 counter.snapshot()["passage_confirmation_ratio"]
@@ -351,6 +394,7 @@ class DoorCounterTest(unittest.TestCase):
                 "entered_total": 1,
                 "exited_total": 0,
                 "people_inside": 1,
+                "door_profile_entered_total": 0,
                 "passage_confirmation_ratio": 1.0,
             })
             self.assertEqual(
@@ -455,7 +499,9 @@ class DoorCounterTest(unittest.TestCase):
                 detector=detector,
             )
             counter._motion_flow = lambda _camera, image: (
-                (0, [], 1) if image[0, 0, 0] == 6 else (0, [], 0)
+                (0, [], 1, {"entry": 0, "exit": 0})
+                if image[0, 0, 0] == 6
+                else (0, [], 0, {"entry": 0, "exit": 0})
             )
             for second in range(13):
                 timestamp = started + timedelta(seconds=second)

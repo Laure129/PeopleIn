@@ -10,7 +10,8 @@ from unittest.mock import Mock, patch
 
 from peoplein.config import _load_archive_env, archive_server, stream_cameras
 from peoplein.run import (
-    _reference_events, _reference_interval, _run, occupancy_exact_match_pct,
+    _analyze_interval, _reference_events, _reference_interval, _run,
+    occupancy_exact_match_pct,
 )
 from peoplein.stream import (
     _decode_camera, _remote_intervals, common_archive_interval,
@@ -20,6 +21,48 @@ from peoplein.sync import PlaybackClock
 
 
 class ArchiveRunTest(unittest.TestCase):
+    def test_motion_camera_uses_the_faster_sample_interval(self):
+        started = datetime(2026, 1, 2)
+        cameras = ("entrance", "loby")
+        counter = Mock()
+        counter.motion = {"loby": {}}
+        counter.snapshot.return_value = {
+            "entered_total": 0,
+            "exited_total": 0,
+            "people_inside": 0,
+        }
+
+        def plan(_archive, start, end, selected, interval_ms):
+            camera = selected[0]
+            return {camera: [{
+                "camera": camera,
+                "mkv": f"{camera}.mkv",
+                "frame_index": tick,
+                "mkv_pts_time": start + timedelta(
+                    milliseconds=tick * interval_ms,
+                ),
+            } for tick in range((end - start) // timedelta(
+                milliseconds=interval_ms,
+            ))]}
+
+        store = Mock()
+        store.get.return_value = SimpleNamespace(shape=(360, 640, 3))
+        with patch(
+            "peoplein.run.build_archive_plan", side_effect=plan,
+        ), patch(
+            "peoplein.run.FrameStore", return_value=store,
+        ), patch(
+            "peoplein.run.start_decoders", return_value=[],
+        ):
+            decoded, ticks, skew, _ = _analyze_interval(
+                Path("archive"), cameras, counter, started,
+                started + timedelta(milliseconds=400), 200,
+                motion_interval_ms=40,
+            )
+
+        self.assertEqual((decoded, ticks, skew), (12, 2, 0))
+        self.assertEqual(counter.update.call_count, 12)
+
     def test_archive_server_loads_env_file_without_overriding_process(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(
             "os.environ", {"ARCHIVE_LOGIN": "process-user"}, clear=True,
