@@ -1,0 +1,1115 @@
+{
+  "format_version": 1,
+  "app_version": "0.3.16",
+  "run": {
+    "source_archive": "resources/archive_debug_cache_remote",
+    "start_time": "2026-08-18T22:26:05.000",
+    "end_time": "2026-08-20T16:31:02.000",
+    "start_offset_ms": 0,
+    "time_zone": null,
+    "video_duration_seconds": 151376.12,
+    "processing_time_seconds": 32314.892,
+    "skipped_intervals": [
+      {
+        "start": "2026-08-18T22:22:42.000",
+        "end": "2026-08-18T22:26:05.000",
+        "duration_seconds": 203.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-18T22:27:40.000",
+        "end": "2026-08-18T22:27:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-18T22:37:41.000",
+        "end": "2026-08-18T22:37:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-18T22:47:40.000",
+        "end": "2026-08-18T22:47:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-18T22:57:41.000",
+        "end": "2026-08-18T22:57:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-18T23:07:40.000",
+        "end": "2026-08-18T23:07:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-18T23:17:41.000",
+        "end": "2026-08-18T23:17:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-18T23:27:40.000",
+        "end": "2026-08-18T23:27:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-18T23:37:41.000",
+        "end": "2026-08-18T23:37:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-18T23:47:40.000",
+        "end": "2026-08-18T23:47:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-18T23:57:41.000",
+        "end": "2026-08-18T23:57:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T00:07:40.000",
+        "end": "2026-08-19T00:07:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T00:17:41.000",
+        "end": "2026-08-19T00:17:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T00:27:40.000",
+        "end": "2026-08-19T00:27:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T00:37:41.000",
+        "end": "2026-08-19T00:37:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T00:47:40.000",
+        "end": "2026-08-19T00:47:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T00:57:41.000",
+        "end": "2026-08-19T00:57:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T01:07:40.000",
+        "end": "2026-08-19T01:07:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T01:17:41.000",
+        "end": "2026-08-19T01:17:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T01:27:40.000",
+        "end": "2026-08-19T01:27:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T01:37:41.000",
+        "end": "2026-08-19T01:37:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T01:42:42.000",
+        "end": "2026-08-19T01:42:43.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T01:57:41.000",
+        "end": "2026-08-19T01:57:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T02:02:42.000",
+        "end": "2026-08-19T02:02:43.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T02:12:41.000",
+        "end": "2026-08-19T02:12:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T02:22:40.000",
+        "end": "2026-08-19T02:22:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T02:32:41.000",
+        "end": "2026-08-19T02:32:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T02:42:40.000",
+        "end": "2026-08-19T02:42:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T02:52:41.000",
+        "end": "2026-08-19T02:52:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T03:02:40.000",
+        "end": "2026-08-19T03:02:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T03:12:41.000",
+        "end": "2026-08-19T03:12:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T03:22:40.000",
+        "end": "2026-08-19T03:22:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T03:32:41.000",
+        "end": "2026-08-19T03:32:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T03:42:40.000",
+        "end": "2026-08-19T03:42:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T03:52:41.000",
+        "end": "2026-08-19T03:52:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T04:02:40.000",
+        "end": "2026-08-19T04:02:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T04:05:01.120",
+        "end": "2026-08-19T04:06:03.000",
+        "duration_seconds": 61.88,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T04:12:41.000",
+        "end": "2026-08-19T04:12:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T04:22:40.000",
+        "end": "2026-08-19T04:22:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T04:32:41.000",
+        "end": "2026-08-19T04:32:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T04:42:40.000",
+        "end": "2026-08-19T04:42:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T04:52:41.000",
+        "end": "2026-08-19T04:52:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T05:02:40.000",
+        "end": "2026-08-19T05:02:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T05:12:41.000",
+        "end": "2026-08-19T05:12:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T05:22:40.000",
+        "end": "2026-08-19T05:22:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T05:32:41.000",
+        "end": "2026-08-19T05:32:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T05:42:40.000",
+        "end": "2026-08-19T05:42:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T05:52:41.000",
+        "end": "2026-08-19T05:52:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T06:02:40.000",
+        "end": "2026-08-19T06:02:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T06:12:41.000",
+        "end": "2026-08-19T06:12:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T06:22:40.000",
+        "end": "2026-08-19T06:22:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T21:02:40.000",
+        "end": "2026-08-19T21:02:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T21:12:39.000",
+        "end": "2026-08-19T21:12:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T21:22:40.000",
+        "end": "2026-08-19T21:22:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T21:27:41.000",
+        "end": "2026-08-19T21:27:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T21:37:40.000",
+        "end": "2026-08-19T21:37:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T21:47:41.000",
+        "end": "2026-08-19T21:47:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T21:57:40.000",
+        "end": "2026-08-19T21:57:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T22:07:41.000",
+        "end": "2026-08-19T22:07:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T22:17:40.000",
+        "end": "2026-08-19T22:17:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T22:27:41.000",
+        "end": "2026-08-19T22:27:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T22:37:40.000",
+        "end": "2026-08-19T22:37:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T22:47:41.000",
+        "end": "2026-08-19T22:47:42.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T22:57:40.000",
+        "end": "2026-08-19T22:57:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T23:07:39.000",
+        "end": "2026-08-19T23:07:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T23:17:40.000",
+        "end": "2026-08-19T23:17:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T23:27:39.000",
+        "end": "2026-08-19T23:27:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T23:37:40.000",
+        "end": "2026-08-19T23:37:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T23:47:39.000",
+        "end": "2026-08-19T23:47:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T23:57:40.000",
+        "end": "2026-08-19T23:57:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T00:07:39.000",
+        "end": "2026-08-20T00:07:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T00:17:40.000",
+        "end": "2026-08-20T00:17:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T00:27:39.000",
+        "end": "2026-08-20T00:27:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T00:37:40.000",
+        "end": "2026-08-20T00:37:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T00:47:39.000",
+        "end": "2026-08-20T00:47:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T00:57:40.000",
+        "end": "2026-08-20T00:57:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T01:07:39.000",
+        "end": "2026-08-20T01:07:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T01:17:40.000",
+        "end": "2026-08-20T01:17:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T01:27:39.000",
+        "end": "2026-08-20T01:27:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T01:37:40.000",
+        "end": "2026-08-20T01:37:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T01:47:39.000",
+        "end": "2026-08-20T01:47:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T01:57:40.000",
+        "end": "2026-08-20T01:57:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T02:07:39.000",
+        "end": "2026-08-20T02:07:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T02:17:40.000",
+        "end": "2026-08-20T02:17:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T02:27:39.000",
+        "end": "2026-08-20T02:27:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T02:37:40.000",
+        "end": "2026-08-20T02:37:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T02:47:39.000",
+        "end": "2026-08-20T02:47:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T02:57:40.000",
+        "end": "2026-08-20T02:57:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T03:07:39.000",
+        "end": "2026-08-20T03:07:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T03:17:40.000",
+        "end": "2026-08-20T03:17:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T03:27:39.000",
+        "end": "2026-08-20T03:27:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T03:37:40.000",
+        "end": "2026-08-20T03:37:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T03:47:39.000",
+        "end": "2026-08-20T03:47:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T03:57:40.000",
+        "end": "2026-08-20T03:57:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T04:07:39.000",
+        "end": "2026-08-20T04:07:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T04:17:40.000",
+        "end": "2026-08-20T04:17:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T04:27:39.000",
+        "end": "2026-08-20T04:27:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T04:37:40.000",
+        "end": "2026-08-20T04:37:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T04:47:39.000",
+        "end": "2026-08-20T04:47:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T04:57:40.000",
+        "end": "2026-08-20T04:57:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T05:07:39.000",
+        "end": "2026-08-20T05:07:40.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T05:12:40.000",
+        "end": "2026-08-20T05:12:41.000",
+        "duration_seconds": 1.0,
+        "reason": "camera_archives_do_not_overlap"
+      }
+    ]
+  },
+  "result": {
+    "entered_total": 15,
+    "exited_total": 12,
+    "people_inside": 3,
+    "passage_confirmation_ratio": 1.0
+  },
+  "motion_activity_intervals": [
+    {
+      "camera": "loby",
+      "start": "2026-08-19T01:43:52.000",
+      "end": "2026-08-19T01:43:54.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T02:20:38.400",
+      "end": "2026-08-19T02:20:40.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T08:29:32.800",
+      "end": "2026-08-19T08:29:32.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T08:31:42.600",
+      "end": "2026-08-19T08:31:44.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T09:35:14.400",
+      "end": "2026-08-19T09:35:18.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T15:31:51.400",
+      "end": "2026-08-19T15:31:51.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T15:32:15.000",
+      "end": "2026-08-19T15:32:15.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T15:32:35.600",
+      "end": "2026-08-19T15:32:38.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T16:14:48.200",
+      "end": "2026-08-19T16:14:50.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T18:39:31.200",
+      "end": "2026-08-19T18:39:33.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T19:52:18.800",
+      "end": "2026-08-19T19:52:20.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T20:55:27.600",
+      "end": "2026-08-19T20:55:30.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T21:52:10.400",
+      "end": "2026-08-19T21:52:13.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T21:52:17.000",
+      "end": "2026-08-19T21:52:17.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T21:52:32.600",
+      "end": "2026-08-19T21:52:32.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T21:52:46.200",
+      "end": "2026-08-19T21:52:48.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T23:01:12.400",
+      "end": "2026-08-19T23:01:14.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T00:03:30.600",
+      "end": "2026-08-20T00:03:32.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T00:30:54.800",
+      "end": "2026-08-20T00:30:57.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T00:31:00.200",
+      "end": "2026-08-20T00:31:00.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T00:32:38.600",
+      "end": "2026-08-20T00:32:40.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T05:22:40.000",
+      "end": "2026-08-20T05:22:41.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T05:51:17.800",
+      "end": "2026-08-20T05:51:21.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T10:36:52.800",
+      "end": "2026-08-20T10:36:52.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T10:58:16.400",
+      "end": "2026-08-20T10:58:17.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T11:59:50.000",
+      "end": "2026-08-20T11:59:50.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T12:00:50.600",
+      "end": "2026-08-20T12:00:51.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T12:37:31.000",
+      "end": "2026-08-20T12:37:32.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T12:38:31.400",
+      "end": "2026-08-20T12:38:32.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T13:19:44.200",
+      "end": "2026-08-20T13:19:47.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T13:31:00.000",
+      "end": "2026-08-20T13:31:00.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T13:37:27.000",
+      "end": "2026-08-20T13:37:28.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T14:34:48.600",
+      "end": "2026-08-20T14:34:50.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T14:34:56.000",
+      "end": "2026-08-20T14:34:56.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T14:43:26.600",
+      "end": "2026-08-20T14:43:27.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T14:43:31.400",
+      "end": "2026-08-20T14:43:31.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T14:43:36.200",
+      "end": "2026-08-20T14:43:36.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T15:01:03.400",
+      "end": "2026-08-20T15:01:04.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T16:09:27.000",
+      "end": "2026-08-20T16:09:30.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T16:26:00.600",
+      "end": "2026-08-20T16:26:02.400"
+    }
+  ],
+  "passages": [
+    {
+      "timestamp": "2026-08-19T01:43:54.400",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-19T01:43:54.400",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-19T02:20:39.600",
+      "direction": "exit",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-19T02:20:39.200",
+        "delta_seconds": 0.4
+      }
+    },
+    {
+      "timestamp": "2026-08-19T08:31:44.600",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-19T08:31:44.000",
+        "delta_seconds": 0.6
+      }
+    },
+    {
+      "timestamp": "2026-08-19T15:32:37.600",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-19T15:32:37.800",
+        "delta_seconds": 0.2
+      }
+    },
+    {
+      "timestamp": "2026-08-19T16:14:48.400",
+      "direction": "exit",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-19T16:14:48.400",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-19T18:39:33.000",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-19T18:39:33.000",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-19T19:52:19.800",
+      "direction": "exit",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-19T19:52:19.800",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-19T20:55:30.400",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-19T20:55:30.200",
+        "delta_seconds": 0.2
+      }
+    },
+    {
+      "timestamp": "2026-08-19T21:52:17.600",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-19T21:52:17.000",
+        "delta_seconds": 0.6
+      }
+    },
+    {
+      "timestamp": "2026-08-19T21:52:47.400",
+      "direction": "exit",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-19T21:52:47.400",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-20T00:03:31.600",
+      "direction": "exit",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T00:03:31.600",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-20T00:30:57.000",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T00:30:57.000",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-20T00:32:38.800",
+      "direction": "exit",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T00:32:38.800",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-20T05:22:41.400",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T05:22:41.200",
+        "delta_seconds": 0.2
+      }
+    },
+    {
+      "timestamp": "2026-08-20T05:51:17.800",
+      "direction": "exit",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T05:51:17.800",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-20T10:36:52.800",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T10:36:52.800",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-20T10:58:16.600",
+      "direction": "exit",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T10:58:16.600",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-20T12:00:51.600",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T12:00:51.600",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-20T12:37:32.200",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T12:37:32.000",
+        "delta_seconds": 0.2
+      }
+    },
+    {
+      "timestamp": "2026-08-20T12:38:30.800",
+      "direction": "exit",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T12:38:31.400",
+        "delta_seconds": 0.6
+      }
+    },
+    {
+      "timestamp": "2026-08-20T13:19:46.800",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T13:19:46.800",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-20T13:37:28.600",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T13:37:28.600",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-20T14:34:48.600",
+      "direction": "exit",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T14:34:48.600",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-20T14:43:27.400",
+      "direction": "exit",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T14:43:27.400",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-20T15:01:04.600",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T15:01:04.600",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-20T16:09:27.400",
+      "direction": "exit",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T16:09:27.400",
+        "delta_seconds": 0.0
+      }
+    },
+    {
+      "timestamp": "2026-08-20T16:26:02.000",
+      "direction": "entry",
+      "camera": "entrance",
+      "confirmation": {
+        "camera": "loby",
+        "timestamp": "2026-08-20T16:26:02.000",
+        "delta_seconds": 0.0
+      }
+    }
+  ],
+  "artifacts": {
+    "log": "run.log",
+    "diagnostics": "diagnostics.jsonl",
+    "evidence": "evidence",
+    "motion_activity": "motion_activity",
+    "config": "config.toml"
+  },
+  "command": "/usr/local/bin/python -m peoplein.run"
+}
