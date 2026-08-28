@@ -158,6 +158,11 @@ class ArchiveRunTest(unittest.TestCase):
                 [(0, 5), (5, 10)],
                 [],
             ),
+            "one_second_gap": (
+                {"entrance": [(0, 5), (6, 5)], "loby": [(0, 11)]},
+                [(0, 5), (6, 11)],
+                [],
+            ),
             "shifted_end": (
                 {"entrance": [(0, 10)], "loby": [(2, 5)]},
                 [(2, 7)],
