@@ -85,6 +85,8 @@ class DoorCounterTest(unittest.TestCase):
             },
         }
         counter.pending_evidence = [object()]
+        counter.diagnostics = None
+        counter.zero_motion_flows = {}
 
         counter.reset_stream()
 
@@ -109,6 +111,50 @@ class DoorCounterTest(unittest.TestCase):
             {"loby": counter._new_motion_profile()},
         )
         self.assertFalse(counter.pending_evidence)
+
+    def test_zero_motion_diagnostics_are_aggregated(self):
+        started = datetime(2026, 1, 2)
+        with tempfile.TemporaryDirectory() as directory:
+            diagnostics = Path(directory) / "diagnostics.jsonl"
+            counter = DoorCounter(
+                cameras={}, model_path="unused", confidence=0.35,
+                agreement_seconds=15, crossing_margin_px=1,
+                database_path=Path(directory) / "people.sqlite3",
+                app_version="test", detector=Mock(),
+                diagnostics_path=diagnostics,
+            )
+            for tick, inference_ms in enumerate((10.0, 14.0)):
+                counter._motion_diagnostic(
+                    started + timedelta(milliseconds=40 * tick), "loby",
+                    inference_ms, 0, 0, {"entry": 0, "exit": 0},
+                )
+            counter._motion_diagnostic(
+                started + timedelta(milliseconds=80), "loby",
+                8.0, 0, 0, {"entry": 1, "exit": 0},
+            )
+            counter._motion_diagnostic(
+                started + timedelta(milliseconds=120), "loby",
+                9.0, 0, 0, {"entry": 0, "exit": 0},
+            )
+            counter.close()
+
+            records = [
+                json.loads(line)
+                for line in diagnostics.read_text(encoding="utf-8").splitlines()
+            ]
+
+        self.assertEqual([record["event"] for record in records], [
+            "motion_flow_zero", "motion_flow", "motion_flow_zero",
+        ])
+        self.assertEqual(records[0]["archive_time"], "2026-01-02 00:00:00.000")
+        self.assertEqual(
+            records[0]["archive_end_time"], "2026-01-02 00:00:00.040",
+        )
+        self.assertEqual(records[0]["samples"], 2)
+        self.assertEqual(records[0]["inference_ms_min"], 10.0)
+        self.assertEqual(records[0]["inference_ms_avg"], 12.0)
+        self.assertEqual(records[0]["inference_ms_max"], 14.0)
+        self.assertEqual(records[2]["samples"], 1)
 
     def test_motion_profile_counts_each_low_high_low_person_shape(self):
         counter = DoorCounter.__new__(DoorCounter)

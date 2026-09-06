@@ -185,6 +185,7 @@ class DoorCounter:
         if self.door_motion_activity_dir:
             self.door_motion_activity_dir.mkdir(parents=True, exist_ok=False)
         self.diagnostics = None
+        self.zero_motion_flows = {}
         if diagnostics_path:
             path = Path(diagnostics_path)
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -199,12 +200,9 @@ class DoorCounter:
                 full_camera_motion_points, profile_points,
             ) = self._motion_flow(camera, frame)
             inference_ms = round((time.monotonic() - started) * 1000, 3)
-            self._diagnostic(
-                "motion_flow", timestamp, camera,
-                inference_ms=inference_ms,
-                door_motion_points=door_motion_points,
-                full_camera_motion_points=full_camera_motion_points,
-                motion_profile_points=profile_points,
+            self._motion_diagnostic(
+                timestamp, camera, inference_ms, door_motion_points,
+                full_camera_motion_points, profile_points,
             )
             self._update_motion_profile(camera, timestamp, profile_points)
             self.pending_frames[camera].append((
@@ -909,6 +907,63 @@ class DoorCounter:
         self.diagnostics.write(json.dumps(record, ensure_ascii=False) + "\n")
         self.diagnostics.flush()
 
+    def _motion_diagnostic(
+        self, timestamp, camera, inference_ms, door_motion_points,
+        full_camera_motion_points, profile_points,
+    ):
+        if not self.diagnostics:
+            return
+        if (
+            door_motion_points or full_camera_motion_points
+            or any(profile_points.values())
+        ):
+            self._flush_zero_motion_flows(camera)
+            self._diagnostic(
+                "motion_flow", timestamp, camera,
+                inference_ms=inference_ms,
+                door_motion_points=door_motion_points,
+                full_camera_motion_points=full_camera_motion_points,
+                motion_profile_points=profile_points,
+            )
+            return
+        aggregate = self.zero_motion_flows.get(camera)
+        if aggregate is None:
+            self.zero_motion_flows[camera] = {
+                "start": timestamp,
+                "end": timestamp,
+                "samples": 1,
+                "inference_ms_sum": inference_ms,
+                "inference_ms_min": inference_ms,
+                "inference_ms_max": inference_ms,
+            }
+            return
+        aggregate["end"] = timestamp
+        aggregate["samples"] += 1
+        aggregate["inference_ms_sum"] += inference_ms
+        aggregate["inference_ms_min"] = min(
+            aggregate["inference_ms_min"], inference_ms,
+        )
+        aggregate["inference_ms_max"] = max(
+            aggregate["inference_ms_max"], inference_ms,
+        )
+
+    def _flush_zero_motion_flows(self, camera=None):
+        cameras = (camera,) if camera else tuple(self.zero_motion_flows)
+        for current_camera in cameras:
+            aggregate = self.zero_motion_flows.pop(current_camera, None)
+            if aggregate is None:
+                continue
+            self._diagnostic(
+                "motion_flow_zero", aggregate["start"], current_camera,
+                archive_end_time=self._timestamp(aggregate["end"]),
+                samples=aggregate["samples"],
+                inference_ms_min=aggregate["inference_ms_min"],
+                inference_ms_avg=round(
+                    aggregate["inference_ms_sum"] / aggregate["samples"], 3,
+                ),
+                inference_ms_max=aggregate["inference_ms_max"],
+            )
+
     @staticmethod
     def _timestamp(value):
         return value.isoformat(sep=" ", timespec="milliseconds")
@@ -1015,6 +1070,7 @@ class DoorCounter:
 
     def finish(self, timestamp):
         if self.motion:
+            self._flush_zero_motion_flows()
             self._flush_frames(timestamp, force=True)
             for camera in self.motion:
                 self._finish_motion_profile(camera)
@@ -1023,6 +1079,7 @@ class DoorCounter:
 
     def reset_stream(self):
         """Discard temporal state that cannot cross an archive gap."""
+        self._flush_zero_motion_flows()
         for tracks in self.tracks.values():
             tracks.clear()
         for frames in self.pending_frames.values():
@@ -1045,5 +1102,6 @@ class DoorCounter:
 
     def close(self):
         if self.diagnostics:
+            self._flush_zero_motion_flows()
             self.diagnostics.close()
             self.diagnostics = None
