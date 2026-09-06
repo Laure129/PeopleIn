@@ -152,6 +152,12 @@ def door_counter_settings(config_path=CONFIG_PATH):
     result = {}
     for camera in stream_cameras(path):
         values = cameras[camera]
+        neural_detector = values.get("neural_people_detector", True)
+        if not isinstance(neural_detector, bool):
+            raise ValueError(
+                f"config camera {camera} "
+                "neural_people_detector must be true or false"
+            )
         line = values.get("door_line")
         if (
             not isinstance(line, list) or len(line) != 2
@@ -191,6 +197,7 @@ def door_counter_settings(config_path=CONFIG_PATH):
             "directions": directions,
             "door_confidence": float(door_confidence),
             "door_confidence_radius_px": float(radius),
+            "neural_people_detector": neural_detector,
         }
         motion_roi = values.get("motion_roi")
         if motion_roi is not None:
@@ -214,6 +221,7 @@ def door_counter_settings(config_path=CONFIG_PATH):
             perpendicular_only = values.get(
                 "motion_perpendicular_only", False,
             )
+            full_camera_motion = values.get("full_camera_motion", True)
             profile_displacement = values.get(
                 "motion_profile_min_displacement_px", displacement,
             )
@@ -245,6 +253,11 @@ def door_counter_settings(config_path=CONFIG_PATH):
                     f"config camera {camera} "
                     "motion_perpendicular_only must be true or false"
                 )
+            if not isinstance(full_camera_motion, bool):
+                raise ValueError(
+                    f"config camera {camera} "
+                    "full_camera_motion must be true or false"
+                )
             if isinstance(profile_displacement, bool) or not isinstance(
                 profile_displacement, (int, float)
             ) or profile_displacement <= 0:
@@ -273,6 +286,7 @@ def door_counter_settings(config_path=CONFIG_PATH):
             result[camera]["motion_min_points"] = minimum
             result[camera]["motion_min_displacement_px"] = float(displacement)
             result[camera]["motion_perpendicular_only"] = perpendicular_only
+            result[camera]["full_camera_motion"] = full_camera_motion
             result[camera]["motion_profile_min_displacement_px"] = float(
                 profile_displacement
             )

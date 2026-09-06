@@ -8,7 +8,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from peoplein.config import _load_archive_env, archive_server, stream_cameras
+from peoplein.config import (
+    _load_archive_env, archive_server, door_counter_settings, stream_cameras,
+)
 from peoplein.run import (
     _analyze_interval, _reference_events, _reference_interval, _run,
     occupancy_exact_match_pct,
@@ -552,6 +554,9 @@ class ArchiveRunTest(unittest.TestCase):
 
     def test_camera_config_and_accuracy(self):
         self.assertEqual(stream_cameras(), ("entrance", "loby"))
+        cameras = door_counter_settings()["cameras"]
+        self.assertFalse(cameras["entrance"]["neural_people_detector"])
+        self.assertFalse(cameras["loby"]["full_camera_motion"])
 
         reference = [
             {"mkv_pts_time": "2026-01-01 00:00:00.000", "people_inside": 0},

@@ -129,9 +129,6 @@ class DoorCounter:
     ):
         self.cameras = cameras
         self.confidence = confidence
-        self.detector = detector or person_detector(
-            model_path, DIAGNOSTIC_CONFIDENCE,
-        )
         self.motion = {
             camera: {
                 "previous_gray": None,
@@ -142,6 +139,15 @@ class DoorCounter:
             for camera, geometry in cameras.items()
             if "motion_roi" in geometry
         }
+        self.detector = detector
+        if self.detector is None and any(
+            geometry.get("neural_people_detector", True)
+            for camera, geometry in cameras.items()
+            if camera not in self.motion
+        ):
+            self.detector = person_detector(
+                model_path, DIAGNOSTIC_CONFIDENCE,
+            )
         if motion_profile_bin_frames <= 0:
             raise ValueError("motion_profile_bin_frames must be positive")
         self.motion_profile_bin_frames = motion_profile_bin_frames
@@ -280,6 +286,11 @@ class DoorCounter:
 
     def _analyze_people(self, camera, frame, timestamp):
         geometry = self.cameras[camera]
+        if not geometry.get("neural_people_detector", True):
+            self.tracks[camera].clear()
+            self.frame_history[camera].append((frame.copy(), timestamp, []))
+            self._save_ready_evidence(timestamp)
+            return
         line = geometry["line"]
         started = time.monotonic()
         raw_detections = [
@@ -429,9 +440,12 @@ class DoorCounter:
             )
             if self._motion_direction_allowed(start, end, geometry)
         ]
-        full_camera_vectors = self._flow_vectors(
-            activity_previous, gray, None,
-            geometry["motion_min_displacement_px"],
+        full_camera_vectors = (
+            self._flow_vectors(
+                activity_previous, gray, None,
+                geometry["motion_min_displacement_px"],
+            )
+            if geometry.get("full_camera_motion", True) else []
         )
         return (
             len(door_vectors), door_vectors, len(full_camera_vectors),

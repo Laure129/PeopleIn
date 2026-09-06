@@ -575,6 +575,51 @@ class DoorCounterTest(unittest.TestCase):
             "passages": [],
         })
 
+    def test_config_can_disable_neural_and_full_camera_analysis(self):
+        directions = {
+            "left_to_right": "entry",
+            "right_to_left": "exit",
+        }
+        cameras = {
+            "entrance": {
+                "line": ((0, 0), (0, 20)),
+                "directions": directions,
+                "neural_people_detector": False,
+            },
+            "loby": {
+                "line": ((0, 0), (0, 20)),
+                "directions": directions,
+                "motion_roi": ((0, 0), (19, 19)),
+                "motion_band_width_px": 5,
+                "motion_min_points": 1,
+                "motion_min_displacement_px": 1,
+                "full_camera_motion": False,
+            },
+        }
+        detector = RecordingDetector()
+        counter = DoorCounter(
+            cameras=cameras,
+            model_path="unused",
+            confidence=0.35,
+            agreement_seconds=15,
+            crossing_margin_px=1,
+            database_path=Path("unused"),
+            app_version="test",
+            detector=detector,
+            motion_profile_bin_frames=1,
+        )
+        frame = np.zeros((20, 20, 3), dtype=np.uint8)
+        started = datetime(2026, 1, 2)
+        counter._analyze_people("entrance", frame, started)
+        counter._flow_vectors = Mock(return_value=[((0, 0), (1, 0))])
+        counter.update("loby", frame, started)
+        counter.update("loby", frame, started + timedelta(milliseconds=40))
+        counter.finish(started)
+
+        self.assertEqual(detector.frames, [])
+        self.assertEqual(counter.full_camera_motion_activity, [])
+        self.assertEqual(counter._flow_vectors.call_count, 2)
+
     def test_door_motion_confirms_before_full_camera_motion(self):
         started = datetime(2026, 1, 2)
         counter = DoorCounter.__new__(DoorCounter)

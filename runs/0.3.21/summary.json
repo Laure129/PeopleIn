@@ -1,0 +1,413 @@
+{
+  "format_version": 1,
+  "app_version": "0.3.21",
+  "run": {
+    "source_archive": "resources/archive_debug_cache",
+    "start_time": "2026-07-13T23:56:04.000",
+    "end_time": "2026-08-20T16:27:40.000",
+    "start_offset_ms": 0,
+    "time_zone": null,
+    "video_duration_seconds": 6963.0,
+    "processing_time_seconds": 2105.735,
+    "skipped_intervals": [
+      {
+        "start": "2026-07-13T23:53:27.000",
+        "end": "2026-07-13T23:56:04.000",
+        "duration_seconds": 157.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-07-14T00:08:28.000",
+        "end": "2026-08-19T01:42:43.000",
+        "duration_seconds": 3116055.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T01:46:05.000",
+        "end": "2026-08-19T02:17:42.000",
+        "duration_seconds": 1897.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T02:21:05.000",
+        "end": "2026-08-19T08:31:04.000",
+        "duration_seconds": 22199.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T08:32:41.000",
+        "end": "2026-08-19T09:32:42.000",
+        "duration_seconds": 3601.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T09:36:04.000",
+        "end": "2026-08-19T15:31:04.000",
+        "duration_seconds": 21300.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T15:36:04.000",
+        "end": "2026-08-19T16:12:41.000",
+        "duration_seconds": 2197.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T16:16:04.000",
+        "end": "2026-08-19T18:37:41.000",
+        "duration_seconds": 8497.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T18:41:04.000",
+        "end": "2026-08-19T19:51:04.000",
+        "duration_seconds": 4200.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T19:52:41.000",
+        "end": "2026-08-19T20:52:40.000",
+        "duration_seconds": 3599.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T20:56:04.000",
+        "end": "2026-08-19T21:51:04.000",
+        "duration_seconds": 3300.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T21:56:02.000",
+        "end": "2026-08-19T23:01:02.000",
+        "duration_seconds": 3900.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-19T23:02:41.000",
+        "end": "2026-08-20T00:02:41.000",
+        "duration_seconds": 3600.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T00:06:02.000",
+        "end": "2026-08-20T00:27:40.000",
+        "duration_seconds": 1298.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T00:36:02.000",
+        "end": "2026-08-20T05:21:02.000",
+        "duration_seconds": 17100.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T05:26:02.000",
+        "end": "2026-08-20T05:51:02.000",
+        "duration_seconds": 1500.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T05:52:41.000",
+        "end": "2026-08-20T10:36:02.000",
+        "duration_seconds": 17001.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T10:37:41.000",
+        "end": "2026-08-20T10:57:40.000",
+        "duration_seconds": 1199.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T11:01:02.000",
+        "end": "2026-08-20T11:57:41.000",
+        "duration_seconds": 3399.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T12:01:02.000",
+        "end": "2026-08-20T12:36:02.000",
+        "duration_seconds": 2100.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T12:41:02.000",
+        "end": "2026-08-20T13:17:41.000",
+        "duration_seconds": 2199.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T13:21:02.000",
+        "end": "2026-08-20T13:27:40.000",
+        "duration_seconds": 398.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T13:41:02.000",
+        "end": "2026-08-20T14:32:41.000",
+        "duration_seconds": 3099.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T14:36:02.000",
+        "end": "2026-08-20T14:42:40.000",
+        "duration_seconds": 398.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T14:46:02.000",
+        "end": "2026-08-20T14:57:40.000",
+        "duration_seconds": 698.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T15:02:40.000",
+        "end": "2026-08-20T16:07:40.000",
+        "duration_seconds": 3900.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T16:11:02.000",
+        "end": "2026-08-20T16:22:40.000",
+        "duration_seconds": 698.0,
+        "reason": "camera_archives_do_not_overlap"
+      },
+      {
+        "start": "2026-08-20T16:27:40.000",
+        "end": "2026-08-20T16:31:02.000",
+        "duration_seconds": 202.0,
+        "reason": "camera_archives_do_not_overlap"
+      }
+    ]
+  },
+  "result": {
+    "entered_total": 0,
+    "exited_total": 0,
+    "people_inside": 0,
+    "door_profile_entered_total": 20,
+    "door_profile_exited_total": 15,
+    "passage_confirmation_ratio": null
+  },
+  "door_motion_activity_intervals": [
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:17.400",
+      "end": "2026-07-13T23:57:19.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:57:58.200",
+      "end": "2026-07-13T23:58:01.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-07-13T23:58:53.600",
+      "end": "2026-07-13T23:58:58.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T01:43:52.000",
+      "end": "2026-08-19T01:43:54.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T02:20:38.400",
+      "end": "2026-08-19T02:20:40.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T08:31:42.600",
+      "end": "2026-08-19T08:31:44.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T09:35:14.400",
+      "end": "2026-08-19T09:35:18.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T15:31:51.400",
+      "end": "2026-08-19T15:31:51.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T15:32:15.000",
+      "end": "2026-08-19T15:32:15.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T15:32:35.600",
+      "end": "2026-08-19T15:32:38.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T16:14:48.200",
+      "end": "2026-08-19T16:14:50.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T18:39:31.200",
+      "end": "2026-08-19T18:39:33.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T19:52:18.800",
+      "end": "2026-08-19T19:52:20.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T20:55:27.600",
+      "end": "2026-08-19T20:55:30.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T21:52:10.400",
+      "end": "2026-08-19T21:52:13.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T21:52:17.000",
+      "end": "2026-08-19T21:52:17.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T21:52:32.600",
+      "end": "2026-08-19T21:52:32.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T21:52:46.200",
+      "end": "2026-08-19T21:52:48.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-19T23:01:12.400",
+      "end": "2026-08-19T23:01:14.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T00:03:30.600",
+      "end": "2026-08-20T00:03:32.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T00:30:54.800",
+      "end": "2026-08-20T00:30:57.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T00:31:00.200",
+      "end": "2026-08-20T00:31:00.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T00:32:38.600",
+      "end": "2026-08-20T00:32:40.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T05:22:40.000",
+      "end": "2026-08-20T05:22:41.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T05:51:17.800",
+      "end": "2026-08-20T05:51:21.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T10:36:52.000",
+      "end": "2026-08-20T10:36:52.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T10:58:16.400",
+      "end": "2026-08-20T10:58:17.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T11:59:50.200",
+      "end": "2026-08-20T11:59:50.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T12:00:50.600",
+      "end": "2026-08-20T12:00:51.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T12:37:31.000",
+      "end": "2026-08-20T12:37:32.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T12:38:31.200",
+      "end": "2026-08-20T12:38:32.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T13:19:44.200",
+      "end": "2026-08-20T13:19:47.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T13:31:00.000",
+      "end": "2026-08-20T13:31:00.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T13:37:27.000",
+      "end": "2026-08-20T13:37:28.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T14:34:48.600",
+      "end": "2026-08-20T14:34:50.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T14:34:56.000",
+      "end": "2026-08-20T14:34:56.000"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T14:43:26.600",
+      "end": "2026-08-20T14:43:27.800"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T14:43:31.400",
+      "end": "2026-08-20T14:43:31.400"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T14:43:36.200",
+      "end": "2026-08-20T14:43:36.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T15:01:03.400",
+      "end": "2026-08-20T15:01:04.600"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T16:09:27.200",
+      "end": "2026-08-20T16:09:30.200"
+    },
+    {
+      "camera": "loby",
+      "start": "2026-08-20T16:26:00.600",
+      "end": "2026-08-20T16:26:02.400"
+    }
+  ],
+  "full_camera_motion_activity_intervals": [],
+  "passages": [],
+  "artifacts": {
+    "log": "run.log",
+    "diagnostics": "diagnostics.jsonl",
+    "evidence": "evidence",
+    "door_motion_activity": "door_motion_activity",
+    "config": "config.toml"
+  },
+  "command": "/usr/local/bin/python -m peoplein.run --archive-dir /app/resources/archive_debug_cache"
+}
