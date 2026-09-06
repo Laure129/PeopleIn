@@ -1,0 +1,247 @@
+2026-09-06 20:11:18,418 INFO root: benchmark host is clear
+2026-09-06 20:11:18,726 INFO __main__: run started cameras=entrance,loby archive=/app/resources/archive_debug_cache reference=disabled
+2026-09-06 20:11:31,408 WARNING peoplein.stream: archive interval skipped start=2026-07-13T23:53:27.000 end=2026-07-13T23:56:04.000 duration_seconds=157.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:11:31,409 INFO peoplein.stream: analysis interval ready start=2026-07-13 23:56:04 end=2026-07-13 23:58:27
+2026-09-06 20:12:03,135 INFO peoplein.stream: decoded entrance/20260713-235604.mkv: 715 frames
+2026-09-06 20:12:03,201 INFO peoplein.stream: decoded loby/20260713-235327.mkv: 3575 frames
+2026-09-06 20:12:03,209 INFO __main__: analysis interval completed start=2026-07-13 23:56:04 end=2026-07-13 23:58:27 frames=4290 ticks=715 entered=0 exited=0 people_inside=0
+2026-09-06 20:12:03,211 INFO __main__: summary updated end=2026-07-13 23:58:27
+2026-09-06 20:12:03,211 INFO peoplein.stream: analysis interval ready start=2026-07-13 23:58:27 end=2026-07-14 00:01:04
+2026-09-06 20:12:37,726 INFO peoplein.stream: decoded entrance/20260713-235604.mkv: 785 frames
+2026-09-06 20:12:37,788 INFO peoplein.stream: decoded loby/20260713-235827.mkv: 3925 frames
+2026-09-06 20:12:37,795 INFO __main__: analysis interval completed start=2026-07-13 23:58:27 end=2026-07-14 00:01:04 frames=4710 ticks=785 entered=0 exited=0 people_inside=0
+2026-09-06 20:12:37,797 INFO __main__: summary updated end=2026-07-14 00:01:04
+2026-09-06 20:12:37,797 INFO peoplein.stream: analysis interval ready start=2026-07-14 00:01:04 end=2026-07-14 00:03:27
+2026-09-06 20:13:10,419 INFO peoplein.stream: decoded entrance/20260714-000104.mkv: 715 frames
+2026-09-06 20:13:10,487 INFO peoplein.stream: decoded loby/20260713-235827.mkv: 3575 frames
+2026-09-06 20:13:10,495 INFO __main__: analysis interval completed start=2026-07-14 00:01:04 end=2026-07-14 00:03:27 frames=4290 ticks=715 entered=0 exited=0 people_inside=0
+2026-09-06 20:13:10,497 INFO __main__: summary updated end=2026-07-14 00:03:27
+2026-09-06 20:13:10,497 INFO peoplein.stream: analysis interval ready start=2026-07-14 00:03:28 end=2026-07-14 00:06:04
+2026-09-06 20:13:44,818 INFO peoplein.stream: decoded entrance/20260714-000104.mkv: 780 frames
+2026-09-06 20:13:44,877 INFO peoplein.stream: decoded loby/20260714-000328.mkv: 3900 frames
+2026-09-06 20:13:44,885 INFO __main__: analysis interval completed start=2026-07-14 00:03:28 end=2026-07-14 00:06:04 frames=4680 ticks=780 entered=0 exited=0 people_inside=0
+2026-09-06 20:13:44,886 INFO __main__: summary updated end=2026-07-14 00:06:04
+2026-09-06 20:13:44,886 INFO peoplein.stream: analysis interval ready start=2026-07-14 00:06:04 end=2026-07-14 00:08:28
+2026-09-06 20:14:15,965 INFO peoplein.stream: decoded entrance/20260714-000604.mkv: 720 frames
+2026-09-06 20:14:16,056 INFO peoplein.stream: decoded loby/20260714-000328.mkv: 3600 frames
+2026-09-06 20:14:16,067 INFO __main__: analysis interval completed start=2026-07-14 00:06:04 end=2026-07-14 00:08:28 frames=4320 ticks=720 entered=0 exited=0 people_inside=0
+2026-09-06 20:14:16,069 INFO __main__: summary updated end=2026-07-14 00:08:28
+2026-09-06 20:14:16,069 WARNING peoplein.stream: archive interval skipped start=2026-07-14T00:08:28.000 end=2026-08-19T01:42:43.000 duration_seconds=3116055.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:14:16,069 INFO peoplein.stream: analysis interval ready start=2026-08-19 01:42:43 end=2026-08-19 01:46:05
+2026-09-06 20:14:56,160 INFO peoplein.stream: decoded entrance/20260819-014105.mkv: 1010 frames
+2026-09-06 20:14:56,229 INFO peoplein.stream: decoded loby/20260819-014243.mkv: 5050 frames
+2026-09-06 20:14:56,238 INFO __main__: analysis interval completed start=2026-08-19 01:42:43 end=2026-08-19 01:46:05 frames=6060 ticks=1010 entered=0 exited=0 people_inside=0
+2026-09-06 20:14:56,240 INFO __main__: summary updated end=2026-08-19 01:46:05
+2026-09-06 20:14:56,240 WARNING peoplein.stream: archive interval skipped start=2026-08-19T01:46:05.000 end=2026-08-19T02:17:42.000 duration_seconds=1897.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:14:56,240 INFO peoplein.stream: analysis interval ready start=2026-08-19 02:17:42 end=2026-08-19 02:21:05
+2026-09-06 20:15:35,462 INFO peoplein.stream: decoded entrance/20260819-021605.mkv: 1015 frames
+2026-09-06 20:15:35,528 INFO peoplein.stream: decoded loby/20260819-021742.mkv: 5075 frames
+2026-09-06 20:15:35,536 INFO __main__: analysis interval completed start=2026-08-19 02:17:42 end=2026-08-19 02:21:05 frames=6090 ticks=1015 entered=0 exited=0 people_inside=0
+2026-09-06 20:15:35,538 INFO __main__: summary updated end=2026-08-19 02:21:05
+2026-09-06 20:15:35,538 WARNING peoplein.stream: archive interval skipped start=2026-08-19T02:21:05.000 end=2026-08-19T08:31:04.000 duration_seconds=22199.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:15:35,539 INFO peoplein.stream: analysis interval ready start=2026-08-19 08:31:04 end=2026-08-19 08:32:41
+2026-09-06 20:16:01,032 INFO peoplein.stream: decoded entrance/20260819-083104.mkv: 485 frames
+2026-09-06 20:16:01,101 INFO peoplein.stream: decoded loby/20260819-082741.mkv: 2425 frames
+2026-09-06 20:16:01,112 INFO __main__: analysis interval completed start=2026-08-19 08:31:04 end=2026-08-19 08:32:41 frames=2910 ticks=485 entered=0 exited=0 people_inside=0
+2026-09-06 20:16:01,114 INFO __main__: summary updated end=2026-08-19 08:32:41
+2026-09-06 20:16:01,114 WARNING peoplein.stream: archive interval skipped start=2026-08-19T08:32:41.000 end=2026-08-19T09:32:42.000 duration_seconds=3601.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:16:01,115 INFO peoplein.stream: analysis interval ready start=2026-08-19 09:32:42 end=2026-08-19 09:36:04
+2026-09-06 20:16:44,604 INFO peoplein.stream: decoded entrance/20260819-093104.mkv: 1010 frames
+2026-09-06 20:16:44,677 INFO peoplein.stream: decoded loby/20260819-093242.mkv: 5050 frames
+2026-09-06 20:16:44,690 INFO __main__: analysis interval completed start=2026-08-19 09:32:42 end=2026-08-19 09:36:04 frames=6060 ticks=1010 entered=0 exited=0 people_inside=0
+2026-09-06 20:16:44,693 INFO __main__: summary updated end=2026-08-19 09:36:04
+2026-09-06 20:16:44,693 WARNING peoplein.stream: archive interval skipped start=2026-08-19T09:36:04.000 end=2026-08-19T15:31:04.000 duration_seconds=21300.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:16:44,693 INFO peoplein.stream: analysis interval ready start=2026-08-19 15:31:04 end=2026-08-19 15:32:40
+2026-09-06 20:17:11,394 INFO peoplein.stream: decoded entrance/20260819-153104.mkv: 480 frames
+2026-09-06 20:17:11,488 INFO peoplein.stream: decoded loby/20260819-152740.mkv: 2400 frames
+2026-09-06 20:17:11,500 INFO __main__: analysis interval completed start=2026-08-19 15:31:04 end=2026-08-19 15:32:40 frames=2880 ticks=480 entered=0 exited=0 people_inside=0
+2026-09-06 20:17:11,502 INFO __main__: summary updated end=2026-08-19 15:32:40
+2026-09-06 20:17:11,503 INFO peoplein.stream: analysis interval ready start=2026-08-19 15:32:40 end=2026-08-19 15:36:04
+2026-09-06 20:17:55,731 INFO peoplein.stream: decoded entrance/20260819-153104.mkv: 1020 frames
+2026-09-06 20:17:55,804 INFO peoplein.stream: decoded loby/20260819-153240.mkv: 5100 frames
+2026-09-06 20:17:55,815 INFO __main__: analysis interval completed start=2026-08-19 15:32:40 end=2026-08-19 15:36:04 frames=6120 ticks=1020 entered=0 exited=0 people_inside=0
+2026-09-06 20:17:55,817 INFO __main__: summary updated end=2026-08-19 15:36:04
+2026-09-06 20:17:55,817 WARNING peoplein.stream: archive interval skipped start=2026-08-19T15:36:04.000 end=2026-08-19T16:12:41.000 duration_seconds=2197.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:17:55,817 INFO peoplein.stream: analysis interval ready start=2026-08-19 16:12:41 end=2026-08-19 16:16:04
+2026-09-06 20:18:40,608 INFO peoplein.stream: decoded entrance/20260819-161104.mkv: 1015 frames
+2026-09-06 20:18:40,687 INFO peoplein.stream: decoded loby/20260819-161241.mkv: 5075 frames
+2026-09-06 20:18:40,698 INFO __main__: analysis interval completed start=2026-08-19 16:12:41 end=2026-08-19 16:16:04 frames=6090 ticks=1015 entered=0 exited=0 people_inside=0
+2026-09-06 20:18:40,701 INFO __main__: summary updated end=2026-08-19 16:16:04
+2026-09-06 20:18:40,701 WARNING peoplein.stream: archive interval skipped start=2026-08-19T16:16:04.000 end=2026-08-19T18:37:41.000 duration_seconds=8497.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:18:40,701 INFO peoplein.stream: analysis interval ready start=2026-08-19 18:37:41 end=2026-08-19 18:41:04
+2026-09-06 20:19:22,136 INFO peoplein.stream: decoded entrance/20260819-183604.mkv: 1015 frames
+2026-09-06 20:19:22,222 INFO peoplein.stream: decoded loby/20260819-183741.mkv: 5075 frames
+2026-09-06 20:19:22,240 INFO __main__: analysis interval completed start=2026-08-19 18:37:41 end=2026-08-19 18:41:04 frames=6090 ticks=1015 entered=0 exited=0 people_inside=0
+2026-09-06 20:19:22,243 INFO __main__: summary updated end=2026-08-19 18:41:04
+2026-09-06 20:19:22,243 WARNING peoplein.stream: archive interval skipped start=2026-08-19T18:41:04.000 end=2026-08-19T19:51:04.000 duration_seconds=4200.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:19:22,243 INFO peoplein.stream: analysis interval ready start=2026-08-19 19:51:04 end=2026-08-19 19:52:41
+2026-09-06 20:19:46,811 INFO peoplein.stream: decoded entrance/20260819-195104.mkv: 485 frames
+2026-09-06 20:19:46,881 INFO peoplein.stream: decoded loby/20260819-194741.mkv: 2425 frames
+2026-09-06 20:19:46,889 INFO __main__: analysis interval completed start=2026-08-19 19:51:04 end=2026-08-19 19:52:41 frames=2910 ticks=485 entered=0 exited=0 people_inside=0
+2026-09-06 20:19:46,891 INFO __main__: summary updated end=2026-08-19 19:52:41
+2026-09-06 20:19:46,892 WARNING peoplein.stream: archive interval skipped start=2026-08-19T19:52:41.000 end=2026-08-19T20:52:40.000 duration_seconds=3599.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:19:46,892 INFO peoplein.stream: analysis interval ready start=2026-08-19 20:52:40 end=2026-08-19 20:56:04
+2026-09-06 20:20:31,270 INFO peoplein.stream: decoded entrance/20260819-205104.mkv: 1020 frames
+2026-09-06 20:20:31,358 INFO peoplein.stream: decoded loby/20260819-205240.mkv: 5100 frames
+2026-09-06 20:20:31,369 INFO __main__: analysis interval completed start=2026-08-19 20:52:40 end=2026-08-19 20:56:04 frames=6120 ticks=1020 entered=0 exited=0 people_inside=0
+2026-09-06 20:20:31,371 INFO __main__: summary updated end=2026-08-19 20:56:04
+2026-09-06 20:20:31,371 WARNING peoplein.stream: archive interval skipped start=2026-08-19T20:56:04.000 end=2026-08-19T21:51:04.000 duration_seconds=3300.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:20:31,371 INFO peoplein.stream: analysis interval ready start=2026-08-19 21:51:04 end=2026-08-19 21:52:40
+2026-09-06 20:20:56,817 INFO peoplein.stream: decoded entrance/20260819-215104.mkv: 480 frames
+2026-09-06 20:20:56,891 INFO peoplein.stream: decoded loby/20260819-214742.mkv: 2400 frames
+2026-09-06 20:20:56,900 INFO __main__: analysis interval completed start=2026-08-19 21:51:04 end=2026-08-19 21:52:40 frames=2880 ticks=480 entered=0 exited=0 people_inside=0
+2026-09-06 20:20:56,902 INFO __main__: summary updated end=2026-08-19 21:52:40
+2026-09-06 20:20:56,903 INFO peoplein.stream: analysis interval ready start=2026-08-19 21:52:40 end=2026-08-19 21:56:02
+2026-09-06 20:21:36,784 INFO peoplein.stream: decoded entrance/20260819-215104.mkv: 1010 frames
+2026-09-06 20:21:36,875 INFO peoplein.stream: decoded loby/20260819-215240.mkv: 5050 frames
+2026-09-06 20:21:36,888 INFO __main__: analysis interval completed start=2026-08-19 21:52:40 end=2026-08-19 21:56:02 frames=6060 ticks=1010 entered=0 exited=0 people_inside=0
+2026-09-06 20:21:36,891 INFO __main__: summary updated end=2026-08-19 21:56:02
+2026-09-06 20:21:36,891 WARNING peoplein.stream: archive interval skipped start=2026-08-19T21:56:02.000 end=2026-08-19T23:01:02.000 duration_seconds=3900.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:21:36,891 INFO peoplein.stream: analysis interval ready start=2026-08-19 23:01:02 end=2026-08-19 23:02:41
+2026-09-06 20:22:02,675 INFO peoplein.stream: decoded entrance/20260819-230102.mkv: 495 frames
+2026-09-06 20:22:02,762 INFO peoplein.stream: decoded loby/20260819-225741.mkv: 2475 frames
+2026-09-06 20:22:02,772 INFO __main__: analysis interval completed start=2026-08-19 23:01:02 end=2026-08-19 23:02:41 frames=2970 ticks=495 entered=0 exited=0 people_inside=0
+2026-09-06 20:22:02,775 INFO __main__: summary updated end=2026-08-19 23:02:41
+2026-09-06 20:22:02,775 WARNING peoplein.stream: archive interval skipped start=2026-08-19T23:02:41.000 end=2026-08-20T00:02:41.000 duration_seconds=3600.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:22:02,775 INFO peoplein.stream: analysis interval ready start=2026-08-20 00:02:41 end=2026-08-20 00:06:02
+2026-09-06 20:22:42,569 INFO peoplein.stream: decoded entrance/20260820-000102.mkv: 1005 frames
+2026-09-06 20:22:42,654 INFO peoplein.stream: decoded loby/20260820-000241.mkv: 5025 frames
+2026-09-06 20:22:42,664 INFO __main__: analysis interval completed start=2026-08-20 00:02:41 end=2026-08-20 00:06:02 frames=6030 ticks=1005 entered=0 exited=0 people_inside=0
+2026-09-06 20:22:42,667 INFO __main__: summary updated end=2026-08-20 00:06:02
+2026-09-06 20:22:42,667 WARNING peoplein.stream: archive interval skipped start=2026-08-20T00:06:02.000 end=2026-08-20T00:27:40.000 duration_seconds=1298.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:22:42,667 INFO peoplein.stream: analysis interval ready start=2026-08-20 00:27:40 end=2026-08-20 00:31:02
+2026-09-06 20:23:20,770 INFO peoplein.stream: decoded entrance/20260820-002602.mkv: 1010 frames
+2026-09-06 20:23:20,843 INFO peoplein.stream: decoded loby/20260820-002740.mkv: 5050 frames
+2026-09-06 20:23:20,853 INFO __main__: analysis interval completed start=2026-08-20 00:27:40 end=2026-08-20 00:31:02 frames=6060 ticks=1010 entered=0 exited=0 people_inside=0
+2026-09-06 20:23:20,856 INFO __main__: summary updated end=2026-08-20 00:31:02
+2026-09-06 20:23:20,856 INFO peoplein.stream: analysis interval ready start=2026-08-20 00:31:02 end=2026-08-20 00:32:40
+2026-09-06 20:23:43,686 INFO peoplein.stream: decoded entrance/20260820-003102.mkv: 490 frames
+2026-09-06 20:23:43,784 INFO peoplein.stream: decoded loby/20260820-002740.mkv: 2450 frames
+2026-09-06 20:23:43,802 INFO __main__: analysis interval completed start=2026-08-20 00:31:02 end=2026-08-20 00:32:40 frames=2940 ticks=490 entered=0 exited=0 people_inside=0
+2026-09-06 20:23:43,804 INFO __main__: summary updated end=2026-08-20 00:32:40
+2026-09-06 20:23:43,804 INFO peoplein.stream: analysis interval ready start=2026-08-20 00:32:40 end=2026-08-20 00:36:02
+2026-09-06 20:24:23,423 INFO peoplein.stream: decoded entrance/20260820-003102.mkv: 1010 frames
+2026-09-06 20:24:23,513 INFO peoplein.stream: decoded loby/20260820-003240.mkv: 5050 frames
+2026-09-06 20:24:23,524 INFO __main__: analysis interval completed start=2026-08-20 00:32:40 end=2026-08-20 00:36:02 frames=6060 ticks=1010 entered=0 exited=0 people_inside=0
+2026-09-06 20:24:23,526 INFO __main__: summary updated end=2026-08-20 00:36:02
+2026-09-06 20:24:23,526 WARNING peoplein.stream: archive interval skipped start=2026-08-20T00:36:02.000 end=2026-08-20T05:21:02.000 duration_seconds=17100.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:24:23,526 INFO peoplein.stream: analysis interval ready start=2026-08-20 05:21:02 end=2026-08-20 05:22:41
+2026-09-06 20:24:50,314 INFO peoplein.stream: decoded entrance/20260820-052102.mkv: 495 frames
+2026-09-06 20:24:50,407 INFO peoplein.stream: decoded loby/20260820-051741.mkv: 2475 frames
+2026-09-06 20:24:50,424 INFO __main__: analysis interval completed start=2026-08-20 05:21:02 end=2026-08-20 05:22:41 frames=2970 ticks=495 entered=0 exited=0 people_inside=0
+2026-09-06 20:24:50,426 INFO __main__: summary updated end=2026-08-20 05:22:41
+2026-09-06 20:24:50,426 INFO peoplein.stream: analysis interval ready start=2026-08-20 05:22:41 end=2026-08-20 05:26:02
+2026-09-06 20:25:34,400 INFO peoplein.stream: decoded entrance/20260820-052102.mkv: 1005 frames
+2026-09-06 20:25:34,470 INFO peoplein.stream: decoded loby/20260820-052241.mkv: 5025 frames
+2026-09-06 20:25:34,480 INFO __main__: analysis interval completed start=2026-08-20 05:22:41 end=2026-08-20 05:26:02 frames=6030 ticks=1005 entered=0 exited=0 people_inside=0
+2026-09-06 20:25:34,483 INFO __main__: summary updated end=2026-08-20 05:26:02
+2026-09-06 20:25:34,483 WARNING peoplein.stream: archive interval skipped start=2026-08-20T05:26:02.000 end=2026-08-20T05:51:02.000 duration_seconds=1500.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:25:34,483 INFO peoplein.stream: analysis interval ready start=2026-08-20 05:51:02 end=2026-08-20 05:52:41
+2026-09-06 20:26:00,146 INFO peoplein.stream: decoded entrance/20260820-055102.mkv: 495 frames
+2026-09-06 20:26:00,226 INFO peoplein.stream: decoded loby/20260820-054741.mkv: 2475 frames
+2026-09-06 20:26:00,240 INFO __main__: analysis interval completed start=2026-08-20 05:51:02 end=2026-08-20 05:52:41 frames=2970 ticks=495 entered=0 exited=0 people_inside=0
+2026-09-06 20:26:00,242 INFO __main__: summary updated end=2026-08-20 05:52:41
+2026-09-06 20:26:00,243 WARNING peoplein.stream: archive interval skipped start=2026-08-20T05:52:41.000 end=2026-08-20T10:36:02.000 duration_seconds=17001.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:26:00,243 INFO peoplein.stream: analysis interval ready start=2026-08-20 10:36:02 end=2026-08-20 10:37:41
+2026-09-06 20:26:27,038 INFO peoplein.stream: decoded entrance/20260820-103602.mkv: 495 frames
+2026-09-06 20:26:27,129 INFO peoplein.stream: decoded loby/20260820-103241.mkv: 2475 frames
+2026-09-06 20:26:27,143 INFO __main__: analysis interval completed start=2026-08-20 10:36:02 end=2026-08-20 10:37:41 frames=2970 ticks=495 entered=0 exited=0 people_inside=0
+2026-09-06 20:26:27,145 INFO __main__: summary updated end=2026-08-20 10:37:41
+2026-09-06 20:26:27,145 WARNING peoplein.stream: archive interval skipped start=2026-08-20T10:37:41.000 end=2026-08-20T10:57:40.000 duration_seconds=1199.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:26:27,145 INFO peoplein.stream: analysis interval ready start=2026-08-20 10:57:40 end=2026-08-20 11:01:02
+2026-09-06 20:27:09,519 INFO peoplein.stream: decoded entrance/20260820-105602.mkv: 1010 frames
+2026-09-06 20:27:09,611 INFO peoplein.stream: decoded loby/20260820-105740.mkv: 5050 frames
+2026-09-06 20:27:09,624 INFO __main__: analysis interval completed start=2026-08-20 10:57:40 end=2026-08-20 11:01:02 frames=6060 ticks=1010 entered=0 exited=0 people_inside=0
+2026-09-06 20:27:09,627 INFO __main__: summary updated end=2026-08-20 11:01:02
+2026-09-06 20:27:09,627 WARNING peoplein.stream: archive interval skipped start=2026-08-20T11:01:02.000 end=2026-08-20T11:57:41.000 duration_seconds=3399.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:27:09,627 INFO peoplein.stream: analysis interval ready start=2026-08-20 11:57:41 end=2026-08-20 12:01:02
+2026-09-06 20:27:55,286 INFO peoplein.stream: decoded entrance/20260820-115602.mkv: 1005 frames
+2026-09-06 20:27:55,389 INFO peoplein.stream: decoded loby/20260820-115741.mkv: 5025 frames
+2026-09-06 20:27:55,402 INFO __main__: analysis interval completed start=2026-08-20 11:57:41 end=2026-08-20 12:01:02 frames=6030 ticks=1005 entered=0 exited=0 people_inside=0
+2026-09-06 20:27:55,405 INFO __main__: summary updated end=2026-08-20 12:01:02
+2026-09-06 20:27:55,405 WARNING peoplein.stream: archive interval skipped start=2026-08-20T12:01:02.000 end=2026-08-20T12:36:02.000 duration_seconds=2100.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:27:55,405 INFO peoplein.stream: analysis interval ready start=2026-08-20 12:36:02 end=2026-08-20 12:37:40
+2026-09-06 20:28:21,301 INFO peoplein.stream: decoded entrance/20260820-123602.mkv: 490 frames
+2026-09-06 20:28:21,381 INFO peoplein.stream: decoded loby/20260820-123240.mkv: 2450 frames
+2026-09-06 20:28:21,392 INFO __main__: analysis interval completed start=2026-08-20 12:36:02 end=2026-08-20 12:37:40 frames=2940 ticks=490 entered=0 exited=0 people_inside=0
+2026-09-06 20:28:21,395 INFO __main__: summary updated end=2026-08-20 12:37:40
+2026-09-06 20:28:21,395 INFO peoplein.stream: analysis interval ready start=2026-08-20 12:37:40 end=2026-08-20 12:41:02
+2026-09-06 20:29:04,284 INFO peoplein.stream: decoded entrance/20260820-123602.mkv: 1010 frames
+2026-09-06 20:29:04,365 INFO peoplein.stream: decoded loby/20260820-123740.mkv: 5050 frames
+2026-09-06 20:29:04,379 INFO __main__: analysis interval completed start=2026-08-20 12:37:40 end=2026-08-20 12:41:02 frames=6060 ticks=1010 entered=0 exited=0 people_inside=0
+2026-09-06 20:29:04,382 INFO __main__: summary updated end=2026-08-20 12:41:02
+2026-09-06 20:29:04,382 WARNING peoplein.stream: archive interval skipped start=2026-08-20T12:41:02.000 end=2026-08-20T13:17:41.000 duration_seconds=2199.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:29:04,382 INFO peoplein.stream: analysis interval ready start=2026-08-20 13:17:41 end=2026-08-20 13:21:02
+2026-09-06 20:29:50,428 INFO peoplein.stream: decoded entrance/20260820-131602.mkv: 1005 frames
+2026-09-06 20:29:50,523 INFO peoplein.stream: decoded loby/20260820-131741.mkv: 5025 frames
+2026-09-06 20:29:50,536 INFO __main__: analysis interval completed start=2026-08-20 13:17:41 end=2026-08-20 13:21:02 frames=6030 ticks=1005 entered=0 exited=0 people_inside=0
+2026-09-06 20:29:50,541 INFO __main__: summary updated end=2026-08-20 13:21:02
+2026-09-06 20:29:50,541 WARNING peoplein.stream: archive interval skipped start=2026-08-20T13:21:02.000 end=2026-08-20T13:27:40.000 duration_seconds=398.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:29:50,541 INFO peoplein.stream: analysis interval ready start=2026-08-20 13:27:40 end=2026-08-20 13:31:02
+2026-09-06 20:30:38,017 INFO peoplein.stream: decoded entrance/20260820-132602.mkv: 1010 frames
+2026-09-06 20:30:38,100 INFO peoplein.stream: decoded loby/20260820-132740.mkv: 5050 frames
+2026-09-06 20:30:38,115 INFO __main__: analysis interval completed start=2026-08-20 13:27:40 end=2026-08-20 13:31:02 frames=6060 ticks=1010 entered=0 exited=0 people_inside=0
+2026-09-06 20:30:38,119 INFO __main__: summary updated end=2026-08-20 13:31:02
+2026-09-06 20:30:38,119 INFO peoplein.stream: analysis interval ready start=2026-08-20 13:31:02 end=2026-08-20 13:32:40
+2026-09-06 20:31:05,283 INFO peoplein.stream: decoded entrance/20260820-133102.mkv: 490 frames
+2026-09-06 20:31:05,357 INFO peoplein.stream: decoded loby/20260820-132740.mkv: 2450 frames
+2026-09-06 20:31:05,372 INFO __main__: analysis interval completed start=2026-08-20 13:31:02 end=2026-08-20 13:32:40 frames=2940 ticks=490 entered=0 exited=0 people_inside=0
+2026-09-06 20:31:05,374 INFO __main__: summary updated end=2026-08-20 13:32:40
+2026-09-06 20:31:05,374 INFO peoplein.stream: analysis interval ready start=2026-08-20 13:32:40 end=2026-08-20 13:36:02
+2026-09-06 20:31:48,274 INFO peoplein.stream: decoded entrance/20260820-133102.mkv: 1010 frames
+2026-09-06 20:31:48,352 INFO peoplein.stream: decoded loby/20260820-133240.mkv: 5050 frames
+2026-09-06 20:31:48,363 INFO __main__: analysis interval completed start=2026-08-20 13:32:40 end=2026-08-20 13:36:02 frames=6060 ticks=1010 entered=0 exited=0 people_inside=0
+2026-09-06 20:31:48,367 INFO __main__: summary updated end=2026-08-20 13:36:02
+2026-09-06 20:31:48,367 INFO peoplein.stream: analysis interval ready start=2026-08-20 13:36:02 end=2026-08-20 13:37:40
+2026-09-06 20:32:13,709 INFO peoplein.stream: decoded entrance/20260820-133602.mkv: 490 frames
+2026-09-06 20:32:13,787 INFO peoplein.stream: decoded loby/20260820-133240.mkv: 2450 frames
+2026-09-06 20:32:13,801 INFO __main__: analysis interval completed start=2026-08-20 13:36:02 end=2026-08-20 13:37:40 frames=2940 ticks=490 entered=0 exited=0 people_inside=0
+2026-09-06 20:32:13,804 INFO __main__: summary updated end=2026-08-20 13:37:40
+2026-09-06 20:32:13,804 INFO peoplein.stream: analysis interval ready start=2026-08-20 13:37:40 end=2026-08-20 13:41:02
+2026-09-06 20:32:58,690 INFO peoplein.stream: decoded entrance/20260820-133602.mkv: 1010 frames
+2026-09-06 20:32:58,771 INFO peoplein.stream: decoded loby/20260820-133740.mkv: 5050 frames
+2026-09-06 20:32:58,783 INFO __main__: analysis interval completed start=2026-08-20 13:37:40 end=2026-08-20 13:41:02 frames=6060 ticks=1010 entered=0 exited=0 people_inside=0
+2026-09-06 20:32:58,785 INFO __main__: summary updated end=2026-08-20 13:41:02
+2026-09-06 20:32:58,786 WARNING peoplein.stream: archive interval skipped start=2026-08-20T13:41:02.000 end=2026-08-20T14:32:41.000 duration_seconds=3099.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:32:58,786 INFO peoplein.stream: analysis interval ready start=2026-08-20 14:32:41 end=2026-08-20 14:36:02
+2026-09-06 20:33:45,229 INFO peoplein.stream: decoded entrance/20260820-143102.mkv: 1005 frames
+2026-09-06 20:33:45,318 INFO peoplein.stream: decoded loby/20260820-143241.mkv: 5025 frames
+2026-09-06 20:33:45,332 INFO __main__: analysis interval completed start=2026-08-20 14:32:41 end=2026-08-20 14:36:02 frames=6030 ticks=1005 entered=0 exited=0 people_inside=0
+2026-09-06 20:33:45,335 INFO __main__: summary updated end=2026-08-20 14:36:02
+2026-09-06 20:33:45,335 WARNING peoplein.stream: archive interval skipped start=2026-08-20T14:36:02.000 end=2026-08-20T14:42:40.000 duration_seconds=398.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:33:45,335 INFO peoplein.stream: analysis interval ready start=2026-08-20 14:42:40 end=2026-08-20 14:46:02
+2026-09-06 20:34:31,465 INFO peoplein.stream: decoded entrance/20260820-144102.mkv: 1010 frames
+2026-09-06 20:34:31,557 INFO peoplein.stream: decoded loby/20260820-144240.mkv: 5050 frames
+2026-09-06 20:34:31,570 INFO __main__: analysis interval completed start=2026-08-20 14:42:40 end=2026-08-20 14:46:02 frames=6060 ticks=1010 entered=0 exited=0 people_inside=0
+2026-09-06 20:34:31,573 INFO __main__: summary updated end=2026-08-20 14:46:02
+2026-09-06 20:34:31,573 WARNING peoplein.stream: archive interval skipped start=2026-08-20T14:46:02.000 end=2026-08-20T14:57:40.000 duration_seconds=698.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:34:31,573 INFO peoplein.stream: analysis interval ready start=2026-08-20 14:57:40 end=2026-08-20 15:01:02
+2026-09-06 20:35:15,594 INFO peoplein.stream: decoded entrance/20260820-145602.mkv: 1010 frames
+2026-09-06 20:35:15,685 INFO peoplein.stream: decoded loby/20260820-145740.mkv: 5050 frames
+2026-09-06 20:35:15,699 INFO __main__: analysis interval completed start=2026-08-20 14:57:40 end=2026-08-20 15:01:02 frames=6060 ticks=1010 entered=0 exited=0 people_inside=0
+2026-09-06 20:35:15,703 INFO __main__: summary updated end=2026-08-20 15:01:02
+2026-09-06 20:35:15,703 INFO peoplein.stream: analysis interval ready start=2026-08-20 15:01:02 end=2026-08-20 15:02:40
+2026-09-06 20:35:42,341 INFO peoplein.stream: decoded entrance/20260820-150102.mkv: 490 frames
+2026-09-06 20:35:42,418 INFO peoplein.stream: decoded loby/20260820-145740.mkv: 2450 frames
+2026-09-06 20:35:42,428 INFO __main__: analysis interval completed start=2026-08-20 15:01:02 end=2026-08-20 15:02:40 frames=2940 ticks=490 entered=0 exited=0 people_inside=0
+2026-09-06 20:35:42,431 INFO __main__: summary updated end=2026-08-20 15:02:40
+2026-09-06 20:35:42,431 WARNING peoplein.stream: archive interval skipped start=2026-08-20T15:02:40.000 end=2026-08-20T16:07:40.000 duration_seconds=3900.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:35:42,431 INFO peoplein.stream: analysis interval ready start=2026-08-20 16:07:40 end=2026-08-20 16:11:02
+2026-09-06 20:36:28,061 INFO peoplein.stream: decoded entrance/20260820-160602.mkv: 1010 frames
+2026-09-06 20:36:28,141 INFO peoplein.stream: decoded loby/20260820-160740.mkv: 5050 frames
+2026-09-06 20:36:28,153 INFO __main__: analysis interval completed start=2026-08-20 16:07:40 end=2026-08-20 16:11:02 frames=6060 ticks=1010 entered=0 exited=0 people_inside=0
+2026-09-06 20:36:28,157 INFO __main__: summary updated end=2026-08-20 16:11:02
+2026-09-06 20:36:28,157 WARNING peoplein.stream: archive interval skipped start=2026-08-20T16:11:02.000 end=2026-08-20T16:22:40.000 duration_seconds=698.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:36:28,157 INFO peoplein.stream: analysis interval ready start=2026-08-20 16:22:40 end=2026-08-20 16:26:02
+2026-09-06 20:37:14,005 INFO peoplein.stream: decoded entrance/20260820-162102.mkv: 1010 frames
+2026-09-06 20:37:14,120 INFO peoplein.stream: decoded loby/20260820-162240.mkv: 5050 frames
+2026-09-06 20:37:14,132 INFO __main__: analysis interval completed start=2026-08-20 16:22:40 end=2026-08-20 16:26:02 frames=6060 ticks=1010 entered=0 exited=0 people_inside=0
+2026-09-06 20:37:14,135 INFO __main__: summary updated end=2026-08-20 16:26:02
+2026-09-06 20:37:14,135 INFO peoplein.stream: analysis interval ready start=2026-08-20 16:26:02 end=2026-08-20 16:27:40
+2026-09-06 20:37:41,571 INFO peoplein.stream: decoded entrance/20260820-162602.mkv: 490 frames
+2026-09-06 20:37:41,668 INFO peoplein.stream: decoded loby/20260820-162240.mkv: 2450 frames
+2026-09-06 20:37:41,683 INFO __main__: analysis interval completed start=2026-08-20 16:26:02 end=2026-08-20 16:27:40 frames=2940 ticks=490 entered=0 exited=0 people_inside=0
+2026-09-06 20:37:41,686 INFO __main__: summary updated end=2026-08-20 16:27:40
+2026-09-06 20:37:41,686 WARNING peoplein.stream: archive interval skipped start=2026-08-20T16:27:40.000 end=2026-08-20T16:31:02.000 duration_seconds=202.0 reason=camera_archives_do_not_overlap
+2026-09-06 20:37:42,028 INFO __main__: summary updated end=2026-08-20 16:27:40
+2026-09-06 20:37:42,029 INFO __main__: run completed seconds=6963 frames=208890 ticks=34815 max_skew_ms=0 occupancy_exact_match_pct=None video_duration_seconds=6963.0 processing_time_seconds=1583.301 people_inside=0 passage_confirmation_ratio=None

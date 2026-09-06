@@ -126,6 +126,7 @@ class DoorCounter:
         door_motion_activity_dir=None,
         motion_profile_bin_frames=5,
         reference_events=(),
+        openvino_motion_acceleration=False,
     ):
         self.cameras = cameras
         self.confidence = confidence
@@ -140,10 +141,12 @@ class DoorCounter:
             if "motion_roi" in geometry
         }
         self.detector = detector
-        if self.detector is None and any(
-            geometry.get("neural_people_detector", True)
-            for camera, geometry in cameras.items()
-            if camera not in self.motion
+        if self.detector is None and (
+            openvino_motion_acceleration or any(
+                geometry.get("neural_people_detector", True)
+                for camera, geometry in cameras.items()
+                if camera not in self.motion
+            )
         ):
             self.detector = person_detector(
                 model_path, DIAGNOSTIC_CONFIDENCE,

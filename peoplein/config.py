@@ -131,6 +131,9 @@ def door_counter_settings(config_path=CONFIG_PATH):
     path = Path(config_path)
     settings = _settings(path)
     model = settings.get("person_model")
+    openvino_acceleration = settings.get(
+        "openvino_motion_acceleration", False,
+    )
     confidence = settings.get("person_confidence")
     agreement = settings.get("door_agreement_seconds")
     margin = settings.get("crossing_margin_px")
@@ -138,6 +141,10 @@ def door_counter_settings(config_path=CONFIG_PATH):
         raise ValueError("config person_model must be a relative path")
     if ".." in Path(model).parts:
         raise ValueError("config person_model must stay inside the project")
+    if not isinstance(openvino_acceleration, bool):
+        raise ValueError(
+            "config openvino_motion_acceleration must be true or false"
+        )
     if isinstance(confidence, bool) or not isinstance(confidence, (int, float)) \
             or not 0 < confidence < 1:
         raise ValueError("config person_confidence must be between zero and one")
@@ -296,6 +303,7 @@ def door_counter_settings(config_path=CONFIG_PATH):
             ] = profile_entry_peak
     return {
         "model_path": path.resolve().parent / model,
+        "openvino_motion_acceleration": openvino_acceleration,
         "confidence": float(confidence),
         "agreement_seconds": float(agreement),
         "crossing_margin_px": float(margin),

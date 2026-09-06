@@ -5,7 +5,7 @@ import unittest
 from collections import deque
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import cv2
 import numpy as np
@@ -597,17 +597,21 @@ class DoorCounterTest(unittest.TestCase):
             },
         }
         detector = RecordingDetector()
-        counter = DoorCounter(
-            cameras=cameras,
-            model_path="unused",
-            confidence=0.35,
-            agreement_seconds=15,
-            crossing_margin_px=1,
-            database_path=Path("unused"),
-            app_version="test",
-            detector=detector,
-            motion_profile_bin_frames=1,
-        )
+        with patch(
+            "peoplein.counter.person_detector", return_value=detector,
+        ) as loader:
+            counter = DoorCounter(
+                cameras=cameras,
+                model_path="unused",
+                confidence=0.35,
+                agreement_seconds=15,
+                crossing_margin_px=1,
+                database_path=Path("unused"),
+                app_version="test",
+                motion_profile_bin_frames=1,
+                openvino_motion_acceleration=True,
+            )
+        loader.assert_called_once()
         frame = np.zeros((20, 20, 3), dtype=np.uint8)
         started = datetime(2026, 1, 2)
         counter._analyze_people("entrance", frame, started)

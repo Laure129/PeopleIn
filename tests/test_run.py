@@ -554,7 +554,9 @@ class ArchiveRunTest(unittest.TestCase):
 
     def test_camera_config_and_accuracy(self):
         self.assertEqual(stream_cameras(), ("entrance", "loby"))
-        cameras = door_counter_settings()["cameras"]
+        settings = door_counter_settings()
+        self.assertTrue(settings["openvino_motion_acceleration"])
+        cameras = settings["cameras"]
         self.assertFalse(cameras["entrance"]["neural_people_detector"])
         self.assertFalse(cameras["loby"]["full_camera_motion"])
 
