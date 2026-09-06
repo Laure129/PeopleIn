@@ -6,3 +6,5 @@ resources/archive_debug_cache_remote/
 .DS_Store
 
 runs/**/diagnostics.jsonl
+
+runs/**/diagnostics.jsonl
