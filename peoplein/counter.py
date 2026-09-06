@@ -17,7 +17,7 @@ DIAGNOSTIC_CONFIDENCE = 0.01
 MOTION_ACTIVITY_GAP_SECONDS = 3
 PERSON_ANALYSIS_WINDOW_SECONDS = 5
 MOTION_PROFILE_MIN_BINS = 2
-MOTION_PROFILE_SCAN_SECONDS = 6
+MOTION_PROFILE_EXIT_MIN_BINS = 7
 
 
 class PersonDetector:
@@ -150,6 +150,7 @@ class DoorCounter:
             for camera in self.motion
         }
         self.door_profile_entries = []
+        self.door_profile_exits = []
         self.agreement_seconds = agreement_seconds
         self.crossing_margin_px = crossing_margin_px
         self.database_path = database_path
@@ -446,8 +447,9 @@ class DoorCounter:
             "samples": 0,
             "entry_points": 0,
             "exit_points": 0,
-            "opened_until": None,
             "active_bins": [],
+            "exit_bins": [],
+            "pending_entries": [],
         }
 
     def _update_motion_profile(self, camera, timestamp, points):
@@ -473,22 +475,17 @@ class DoorCounter:
     ):
         state = self.motion_profiles[camera]
         geometry = self.cameras[camera]
-        if exit_points >= geometry.get(
-            "motion_profile_open_min_points", geometry["motion_min_points"],
-        ):
-            self._finish_motion_profile(camera)
-            state["opened_until"] = timestamp + timedelta(
-                seconds=MOTION_PROFILE_SCAN_SECONDS,
-            )
-        if state["opened_until"] is None:
-            return
-        if timestamp > state["opened_until"]:
-            self._finish_motion_profile(camera)
-            state["opened_until"] = None
-            return
-        if entry_points >= geometry.get(
+        minimum = geometry.get(
             "motion_profile_min_points", geometry["motion_min_points"],
-        ):
+        )
+        if state["exit_bins"] and (
+            timestamp - state["exit_bins"][-1][0]
+        ).total_seconds() > MOTION_ACTIVITY_GAP_SECONDS:
+            self._finish_exit_profile(camera)
+        if exit_points >= minimum:
+            state["exit_bins"].append((timestamp, exit_points))
+            self._finish_motion_profile(camera)
+        if entry_points >= minimum:
             state["active_bins"].append((timestamp, entry_points))
         else:
             self._finish_motion_profile(camera)
@@ -496,7 +493,16 @@ class DoorCounter:
     def _finish_motion_profile(self, camera):
         state = self.motion_profiles[camera]
         bins = state["active_bins"]
-        if len(bins) >= MOTION_PROFILE_MIN_BINS:
+        peak_minimum = self.cameras[camera].get(
+            "motion_profile_entry_peak_points",
+            self.cameras[camera].get(
+                "motion_profile_min_points",
+                self.cameras[camera]["motion_min_points"],
+            ),
+        )
+        if len(bins) >= MOTION_PROFILE_MIN_BINS and max(
+            points for _, points in bins
+        ) >= peak_minimum:
             timestamp, peak = max(bins, key=lambda item: item[1])
             entry = {
                 "timestamp": timestamp,
@@ -506,15 +512,48 @@ class DoorCounter:
                 "bins": len(bins),
                 "peak_motion_points": peak,
             }
-            self.door_profile_entries.append(entry)
+            if state["exit_bins"]:
+                state["pending_entries"].append(entry)
+            else:
+                self._record_motion_profile_entry(entry)
+        state["active_bins"] = []
+
+    def _record_motion_profile_entry(self, entry):
+        self.door_profile_entries.append(entry)
+        self._diagnostic(
+            "door_profile_entry", entry["timestamp"], entry["camera"],
+            start=self._timestamp(entry["start"]),
+            end=self._timestamp(entry["end"]),
+            bins=entry["bins"],
+            peak_motion_points=entry["peak_motion_points"],
+        )
+
+    def _finish_exit_profile(self, camera):
+        state = self.motion_profiles[camera]
+        bins = state["exit_bins"]
+        if len(bins) >= MOTION_PROFILE_EXIT_MIN_BINS:
+            timestamp, peak = max(bins, key=lambda item: item[1])
+            exit_ = {
+                "timestamp": timestamp,
+                "camera": camera,
+                "start": bins[0][0],
+                "end": bins[-1][0],
+                "bins": len(bins),
+                "peak_motion_points": peak,
+            }
+            self.door_profile_exits.append(exit_)
             self._diagnostic(
-                "door_profile_entry", timestamp, camera,
-                start=self._timestamp(entry["start"]),
-                end=self._timestamp(entry["end"]),
-                bins=entry["bins"],
+                "door_profile_exit", timestamp, camera,
+                start=self._timestamp(exit_["start"]),
+                end=self._timestamp(exit_["end"]),
+                bins=exit_["bins"],
                 peak_motion_points=peak,
             )
-        state["active_bins"] = []
+        else:
+            for entry in state["pending_entries"]:
+                self._record_motion_profile_entry(entry)
+        state["exit_bins"] = []
+        state["pending_entries"] = []
 
     @staticmethod
     def _flow_vectors(previous, gray, mask, minimum_displacement):
@@ -994,6 +1033,11 @@ class DoorCounter:
                 or entry["timestamp"] < timestamp + timedelta(seconds=1)
                 for entry in self.door_profile_entries
             ),
+            "door_profile_exited_total": sum(
+                timestamp is None
+                or exit_["timestamp"] < timestamp + timedelta(seconds=1)
+                for exit_ in self.door_profile_exits
+            ),
             "passage_confirmation_ratio": (
                 round(confirmed / len(events), 6)
                 if events else None
@@ -1074,6 +1118,7 @@ class DoorCounter:
             self._flush_frames(timestamp, force=True)
             for camera in self.motion:
                 self._finish_motion_profile(camera)
+                self._finish_exit_profile(camera)
         self._expire_events(timestamp, force=True)
         self._save_ready_evidence(timestamp, force=True)
 

@@ -220,8 +220,8 @@ def door_counter_settings(config_path=CONFIG_PATH):
             profile_minimum = values.get(
                 "motion_profile_min_points", minimum,
             )
-            profile_open_minimum = values.get(
-                "motion_profile_open_min_points", minimum,
+            profile_entry_peak = values.get(
+                "motion_profile_entry_peak_points", profile_minimum,
             )
             if isinstance(band_width, bool) or not isinstance(band_width, int) \
                     or band_width <= 0:
@@ -259,12 +259,12 @@ def door_counter_settings(config_path=CONFIG_PATH):
                     f"config camera {camera} "
                     "motion_profile_min_points is invalid"
                 )
-            if isinstance(profile_open_minimum, bool) or not isinstance(
-                profile_open_minimum, int
-            ) or profile_open_minimum <= 0:
+            if isinstance(profile_entry_peak, bool) or not isinstance(
+                profile_entry_peak, int
+            ) or profile_entry_peak < profile_minimum:
                 raise ValueError(
                     f"config camera {camera} "
-                    "motion_profile_open_min_points is invalid"
+                    "motion_profile_entry_peak_points is invalid"
                 )
             result[camera]["motion_roi"] = tuple(
                 tuple(point) for point in motion_roi
@@ -278,8 +278,8 @@ def door_counter_settings(config_path=CONFIG_PATH):
             )
             result[camera]["motion_profile_min_points"] = profile_minimum
             result[camera][
-                "motion_profile_open_min_points"
-            ] = profile_open_minimum
+                "motion_profile_entry_peak_points"
+            ] = profile_entry_peak
     return {
         "model_path": path.resolve().parent / model,
         "confidence": float(confidence),

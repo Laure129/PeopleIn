@@ -374,6 +374,9 @@ def _run(args, parser, intervals=None, skipped_intervals=None):
                     "door_profile_entered_total": result.get(
                         "door_profile_entered_total", 0,
                     ),
+                    "door_profile_exited_total": result.get(
+                        "door_profile_exited_total", 0,
+                    ),
                     "passage_confirmation_ratio": result[
                         "passage_confirmation_ratio"
                     ],

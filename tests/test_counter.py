@@ -156,35 +156,41 @@ class DoorCounterTest(unittest.TestCase):
         self.assertEqual(records[0]["inference_ms_max"], 14.0)
         self.assertEqual(records[2]["samples"], 1)
 
-    def test_motion_profile_counts_each_low_high_low_person_shape(self):
+    def test_motion_profile_classifies_entries_and_exit_cycle(self):
         counter = DoorCounter.__new__(DoorCounter)
         counter.cameras = {"loby": {
             "motion_min_points": 3,
-            "motion_profile_open_min_points": 5,
             "motion_profile_min_points": 20,
+            "motion_profile_entry_peak_points": 80,
         }}
         counter.motion_profiles = {"loby": counter._new_motion_profile()}
         counter.door_profile_entries = []
+        counter.door_profile_exits = []
         counter.diagnostics = None
         started = datetime(2026, 1, 2)
 
-        for tick, (entry, exit_) in enumerate((
-            (0, 6),
-            (25, 0), (40, 0), (0, 0),
-            (22, 0), (50, 0), (0, 0),
-            (24, 0), (45, 0), (0, 0),
-        )):
+        profile = (
+            [(0, 30)] * 3
+            + [(100, 0), (120, 0), (0, 0)]
+            + [(0, 0)] * 15
+            + [(90, 0), (110, 0), (0, 0)]
+            + [(0, 30)] * 7
+            + [(100, 0), (120, 0), (0, 0)]
+            + [(0, 0)] * 16
+        )
+        for tick, (entry, exit_) in enumerate(profile):
             counter._motion_profile_bin(
                 "loby", started + timedelta(milliseconds=200 * tick),
                 entry, exit_,
             )
 
-        self.assertEqual(len(counter.door_profile_entries), 3)
         self.assertEqual(
             [entry["peak_motion_points"]
              for entry in counter.door_profile_entries],
-            [40, 50, 45],
+            [120, 110],
         )
+        self.assertEqual(len(counter.door_profile_exits), 1)
+        self.assertEqual(counter.door_profile_exits[0]["bins"], 7)
 
     def test_motion_direction_can_be_limited_to_perpendicular(self):
         geometry = {
@@ -222,6 +228,7 @@ class DoorCounterTest(unittest.TestCase):
         started = datetime(2026, 1, 2)
         counter = DoorCounter.__new__(DoorCounter)
         counter.door_profile_entries = []
+        counter.door_profile_exits = []
         counter.events = [{
             "timestamp": started + timedelta(seconds=5, milliseconds=200),
             "direction": "entry",
@@ -441,6 +448,7 @@ class DoorCounterTest(unittest.TestCase):
                 "exited_total": 0,
                 "people_inside": 1,
                 "door_profile_entered_total": 0,
+                "door_profile_exited_total": 0,
                 "passage_confirmation_ratio": 1.0,
             })
             self.assertEqual(
